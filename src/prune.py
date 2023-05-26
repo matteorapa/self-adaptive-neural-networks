@@ -19,8 +19,8 @@ def apply_prune(model: ResNet, prune_amount: int) -> ResNet:
         if isinstance(module, torch.nn.Conv2d):
             prune.ln_structured(module, name="weight", amount=prune_amount, n=2, dim=0)
         # prune connections in all linear layers
-        elif isinstance(module, torch.nn.Linear):
-            prune.ln_structured(module, name="weight", amount=prune_amount, n=2, dim=0)
+        # elif isinstance(module, torch.nn.Linear):
+        #     prune.ln_structured(module, name="weight", amount=prune_amount, n=2, dim=0)
 
     prune.remove(module, 'weight')
 
