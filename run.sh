@@ -2,7 +2,7 @@
 #SBATCH -p normal
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
-#SBATCH --cpus-per-task=48
+#SBATCH --cpus-per-task=8
 #SBATCH --gpus=1
 #SBATCH --partition=gpu
 #SBATCH --time=60:00:00
@@ -18,6 +18,6 @@ python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0
 python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.05
 python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.10
 python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.15
-# python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.20
-# python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.25
-# python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.30
+python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.20
+python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.25
+python main.py --model resnet50 --epoch 10 --out ../results/conv_only/ --prune 0.30
