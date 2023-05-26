@@ -14,7 +14,7 @@ conda activate base
 
 cd $HOME/msc-thesis-self-adaptive-neural-networks
 
-python main.py --model resnet50 --epoch 10 --out ./results/ --prune 0
-python main.py --model resnet50 --epoch 10 --out ./results/ --prune 0.05
-python main.py --model resnet50 --epoch 10 --out ./results/ --prune 0.10
-python main.py --model resnet50 --epoch 10 --out ./results/ --prune 0.15
+python main.py --model resnet50 --epoch 10 --out ../results/ --prune 0
+python main.py --model resnet50 --epoch 10 --out ../results/ --prune 0.05
+python main.py --model resnet50 --epoch 10 --out ../results/ --prune 0.10
+python main.py --model resnet50 --epoch 10 --out ../results/ --prune 0.15
