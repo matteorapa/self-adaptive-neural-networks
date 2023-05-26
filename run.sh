@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=48
 #SBATCH --gpus=3
 #SBATCH --partition=gpu
-#SBATCH --time=180:00:00
+#SBATCH --time=60:00:00
 #SBATCH --mail-type=BEGIN,END
 #SBATCH --mail-user=matteo.rapa@student.uva.nl
 
