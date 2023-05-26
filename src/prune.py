@@ -13,15 +13,14 @@ def get_external_requirements():
     return 0.1
 
 
-def apply_prune(model: ResNet) -> ResNet:
+def apply_prune(model: ResNet, prune_amount: int) -> ResNet:
     for name, module in model.named_modules():
         # prune connections in all 2D-conv layers
         if isinstance(module, torch.nn.Conv2d):
-
-            prune.ln_structured(module, name="weight", amount=get_external_requirements(), n=2, dim=0)
+            prune.ln_structured(module, name="weight", amount=prune_amount, n=2, dim=0)
         # prune connections in all linear layers
         elif isinstance(module, torch.nn.Linear):
-            prune.ln_structured(module, name="weight", amount=get_external_requirements(), n=2, dim=0)
+            prune.ln_structured(module, name="weight", amount=prune_amount, n=2, dim=0)
 
     prune.remove(module, 'weight')
 
@@ -31,8 +30,6 @@ def apply_prune(model: ResNet) -> ResNet:
             / float(model.conv1.weight.nelement())
         )
     )
-
-    torch.save({'state_dict': model.state_dict()}, 'pruned.pth')
     return model
 
 
