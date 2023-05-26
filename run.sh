@@ -12,7 +12,7 @@
 source /home/matteor/anaconda3/etc/profile.d/conda.sh
 conda activate base
 
-cd $HOME/msc-thesis-self-adaptive-neural-networks
+cd $HOME/msc-thesis-self-adaptive-neural-networks/src
 
 python main.py --model resnet50 --epoch 10 --out ../results/ --prune 0
 python main.py --model resnet50 --epoch 10 --out ../results/ --prune 0.05
