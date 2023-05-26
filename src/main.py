@@ -223,8 +223,6 @@ if __name__ == '__main__':
     pruned_model = apply_prune(model, prune_amount)
     pruned_acc_top1, metrics = validate(pruned_model)
 
-
-
     save_checkpoint(model.state_dict(), output_path, run_identifier)
 
     with open(output_path+run_identifier+'top1_accuracy.txt', 'w') as f:
