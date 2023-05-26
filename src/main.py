@@ -178,9 +178,7 @@ def validate(model):
                     total_images += labels.size(0)
                     total_correct += (predicted == labels).sum().item()
                     i += 1
-                    if i >= 500:
-                        break
-
+                    
     # Compute the accuracy and print the result
     accuracy = 100 * total_correct / total_images
     print('Accuracy on the validation set: {:.2f}%'.format(accuracy))
