@@ -225,15 +225,17 @@ if __name__ == '__main__':
     pruned_model = apply_prune(model, prune_amount)
     pruned_acc_top1, metrics = validate(pruned_model)
 
-    # with open(run_identifier+'metrics.txt', 'w') as f:
-    #     f.write(metrics)
+    
 
-    with open('top1_accuracy.txt', 'w') as f:
-        f.write(accuracy )
+    
 
     save_checkpoint(model.state_dict(), output_path, run_identifier)
 
+    with open(output_path+run_identifier+'top1_accuracy.txt', 'w') as f:
+        f.write(pruned_acc_top1)
 
+    with open(output_path+run_identifier+'metrics.txt', 'w') as f:
+        f.write(metrics)
 
     # # fine-tuning here
     # tuned_model = tune(pruned_model)
