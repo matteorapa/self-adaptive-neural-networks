@@ -141,7 +141,7 @@ def adjust_learning_rate(optimizer, epoch):
 
 def validate(model):
     # Set the batch size for validation
-    batch_size = 24
+    batch_size = 64
 
     # Define the transform for the validation data
     val_transform = transforms.Compose([
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     save_checkpoint(model.state_dict(), output_path, run_identifier)
 
     with open(output_path+run_identifier+'top1_accuracy.txt', 'w') as f:
-        f.write(pruned_acc_top1)
+        f.write(str(pruned_acc_top1))
 
     with open(output_path+run_identifier+'metrics.txt', 'w') as f:
         f.write(metrics)
