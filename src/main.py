@@ -205,6 +205,7 @@ class TARDataset(torch.utils.data.Dataset):
         state = dict(self.__dict__)
         state["tar_handle"] = {}
         return state
+
 def tune(model: ResNet) -> ResNet:
     global best_prec1
 
@@ -221,8 +222,22 @@ def tune(model: ResNet) -> ResNet:
     # print("=> loaded checkpoint '{}' (epoch {})"
     # .format(args.resume, checkpoint['epoch']))
 
+    # read the archive
+    import time
+    from tarimagefolder import  TarImageFolder 
+
+    print('Reading Tar archive headers...')
+    t = time.time()
+    train_dataset = TarImageFolder(args.data, root_in_archive='ILSVRC12/train',
+        transform=transformations)
+    print(f'Done in {float(time.time() - t):.1f} seconds.')
+
+
     tar_train_dataset = TARDataset(path=TRAIN_DIR, transform=transformations, label_file=TRAIN_MEMBERS)
     cudnn.benchmark = True
+
+
+    torchvision.datasets.TarImageFolder
 
     # train_dataset = datasets.ImageFolder(
     #     TRAIN_DIR,
