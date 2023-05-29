@@ -221,7 +221,7 @@ def tune(model: ResNet) -> ResNet:
     # print("=> loaded checkpoint '{}' (epoch {})"
     # .format(args.resume, checkpoint['epoch']))
 
-    tar_train_dataset = TARDataset(path=TRAIN_DIR, transform=transformations)
+    tar_train_dataset = TARDataset(path=TRAIN_DIR, transform=transformations, label_file=TRAIN_MEMBERS)
     cudnn.benchmark = True
 
     # train_dataset = datasets.ImageFolder(
