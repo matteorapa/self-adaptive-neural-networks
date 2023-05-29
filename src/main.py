@@ -391,10 +391,10 @@ if __name__ == '__main__':
     # acc_top1 = validate(model)
     
 
-    pruned_model = apply_prune(model, prune_amount)
-    pruned_acc_top1, metrics = validate(pruned_model)
+    # pruned_model = apply_prune(model, prune_amount)
+    # pruned_acc_top1, metrics = validate(pruned_model)
 
-    save_checkpoint(model.state_dict(), output_path, run_identifier)
+    # save_checkpoint(model.state_dict(), output_path, run_identifier)
 
     # with open(output_path+run_identifier+'top1_accuracy.txt', 'w') as f:
     #     f.write(str(pruned_acc_top1))
@@ -403,7 +403,7 @@ if __name__ == '__main__':
     #     f.write(metrics)
 
     # # fine-tuning here
-    tuned_model = tune(pruned_model)
+    tuned_model = tune(model)
     tuned_acc_top1, metrics = validate(tuned_model)
 
     save_checkpoint(tuned_model.state_dict(), output_path, run_identifier)
