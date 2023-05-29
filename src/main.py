@@ -85,7 +85,7 @@ class TARDataset(torch.utils.data.Dataset):
                 pickle.dump(self.members_by_name, fp)
             print(
                 f"Finished create a members file. Please add the following path to the init as label_file next time: ",
-                Path(path).parent + "members",
+                str(Path(path).parent) + "members",
             )
 
         self._get_all_samples()
