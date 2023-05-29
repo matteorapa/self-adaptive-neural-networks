@@ -58,7 +58,7 @@ def tune(model: ResNet) -> ResNet:
 
     print('Reading Tar archive headers...')
     t = time.time()
-    tar_train_dataset = TarImageFolder(TRAIN_DIR, root_in_archive='ILSVRC2012_img_train/',
+    tar_train_dataset = TarImageFolder(TRAIN_DIR, root_in_archive='ILSVRC2012_img_train/train',
         transform=transformations)
     print(f'Done in {float(time.time() - t):.1f} seconds.')
 
