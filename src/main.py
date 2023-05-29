@@ -58,7 +58,7 @@ def tune(model: ResNet) -> ResNet:
 
     print('Reading Tar archive headers...')
     t = time.time()
-    tar_train_dataset = TarImageFolder(args.data, root_in_archive='ILSVRC12/train',
+    tar_train_dataset = TarImageFolder(TRAIN_DIR, root_in_archive='/',
         transform=transformations)
     print(f'Done in {float(time.time() - t):.1f} seconds.')
 
@@ -66,12 +66,9 @@ def tune(model: ResNet) -> ResNet:
     # tar_train_dataset = TARDataset(path=TRAIN_DIR, transform=transformations, label_file=TRAIN_MEMBERS)
     cudnn.benchmark = True
 
-
-    torchvision.datasets.TarImageFolder
-
-    # train_dataset = datasets.ImageFolder(
-    #     TRAIN_DIR,
-    #     transformations)
+    train_dataset = datasets.ImageFolder(
+        TRAIN_DIR,
+        transformations)
 
     train_loader = torch.utils.data.DataLoader(
         tar_train_dataset, batch_size=16, shuffle=True)
