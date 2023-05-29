@@ -66,7 +66,7 @@ class TARDataset(torch.utils.data.Dataset):
         self.tar_handle = {worker: tarfile.open(path)}
 
         # Store headers of all files and folders by name
-        # self.members = sorted(self.tar_handle[worker].getmembers(), key=lambda m: m.name)
+        self.members = sorted(self.tar_handle[worker].getmembers(), key=lambda m: m.name)
 
         # store headers of all files and folders by name
         if label_file:
