@@ -9,6 +9,7 @@ import torchvision.datasets as datasets
 from torchvision.models import ResNet
 import torchvision.transforms as transforms
 import argparse
+import tarfile
 
 # import local libraries
 from methods import *
