@@ -70,7 +70,7 @@ class TarImageFolder(TarDataset):
       self.targets.append(label)
     
     if len(self.class_to_idx) == 0:
-      raise IOError("No classes (top-level folders) were found with the given criteria. The given\n"
+      raise IOError("No classes (top-level folders) were found with the given criteria. The given \n"
         "extensions, is_valid_file or root_in_archive are too strict, or the archive is empty.")
 
     elif len(self.class_to_idx) == 1:

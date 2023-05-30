@@ -56,22 +56,24 @@ def tune(model: ResNet) -> ResNet:
     import time
     from tarimagefolder import  TarImageFolder 
 
-    print('Reading Tar archive headers...')
-    t = time.time()
-    tar_train_dataset = TarImageFolder(TRAIN_DIR,
-        transform=transformations)
-    print(f'Done in {float(time.time() - t):.1f} seconds.')
+    # print('Reading Tar archive headers...')
+    # t = time.time()
+    # tar_train_dataset = TarImageFolder(TRAIN_DIR, root_in_archive="root/",
+    #     transform=transformations)
+    # print(f'Done in {float(time.time() - t):.1f} seconds.')
 
 
     # tar_train_dataset = TARDataset(path=TRAIN_DIR, transform=transformations, label_file=TRAIN_MEMBERS)
     cudnn.benchmark = True
 
+    t = time.time()
     train_dataset = datasets.ImageFolder(
         TRAIN_DIR,
         transformations)
+    print(f'Done in {float(time.time() - t):.1f} seconds.')
 
     train_loader = torch.utils.data.DataLoader(
-        tar_train_dataset, batch_size=16, shuffle=True)
+        train_dataset, batch_size=16, shuffle=True)
 
     history_score = np.zeros((epochs + 1, 1))
     np.savetxt('record.txt', history_score, fmt = '%10.5f', delimiter=',')
@@ -260,6 +262,7 @@ if __name__ == '__main__':
     tuned_acc_top1, metrics = validate(tuned_model)
 
     save_checkpoint(tuned_model.state_dict(), output_path, run_identifier)
+    print(("Training done"))
 
     # test_model = tune(model)
 
