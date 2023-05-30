@@ -11,8 +11,8 @@ def print_files_and_folders(path):
         print("Subdirectories:")
         for directory in directories:
             print(directory)
+            break
 
-        print("")
 
 
 if __name__ == '__main__':
