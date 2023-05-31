@@ -40,7 +40,7 @@ def tune(model: ResNet) -> ResNet:
     global best_prec1
 
     # model.load_state_dict(checkpoint['state_dict'])
-    criterion = nn.CrossEntropyLoss().cuda()
+    criterion = nn.CrossEntropyLoss().to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
 
     # print("=> loading checkpoint '{}'".format(args.resume))
@@ -112,7 +112,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
     total_images = 0
     i = 0
 
-    model.cuda()
+    model.to(device)
     # switch to train mode
     model.train()
 
@@ -124,7 +124,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        images, target = images.cuda(), target.cuda()
+        images, target = images.to(device), target.to(device)
 
         # compute output
         output = model(images)
