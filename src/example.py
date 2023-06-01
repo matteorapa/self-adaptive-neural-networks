@@ -78,7 +78,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 parser.add_argument('--dummy', action='store_true', help="use fake data to benchmark")
-parser.add_argument('--prune', default=None, type=int,
+parser.add_argument('--prune', default=None, type=float,
                     help='The amount to prune.')
 parser.add_argument('--save', default=None, type=str,
                     help='The save path for weights.')
