@@ -66,11 +66,11 @@ if __name__ == '__main__':
     #     f.write(metrics)
 
     # # fine-tuning here
-    tuned_model = tune(model)
-    tuned_acc_top1, metrics = validate(tuned_model)
-
-    save_checkpoint(tuned_model.state_dict(), output_path, run_identifier)
-    print(("Training done"))
+    # tuned_model = tune(model)
+    # tuned_acc_top1, metrics = validate(tuned_model)
+    #
+    # save_checkpoint(tuned_model.state_dict(), output_path, run_identifier)
+    # print(("Training done"))
 
     # test_model = tune(model)
 

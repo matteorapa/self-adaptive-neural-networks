@@ -2,14 +2,11 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af09428b-1b75-4ff0-94af-89eaa01d575a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/example.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/tune.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/validate.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/example.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/example.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/search.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tardataset.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/tarimagefolder.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/paths.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/paths.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -141,11 +138,6 @@
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/test.py</url>
-          <line>138</line>
-          <option name="timeStamp" value="7" />
-        </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/main.py</url>
           <line>17</line>

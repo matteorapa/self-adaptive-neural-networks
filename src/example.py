@@ -5,6 +5,7 @@ import shutil
 import time
 import warnings
 from enum import Enum
+from prune import *
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -77,6 +78,10 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
 parser.add_argument('--dummy', action='store_true', help="use fake data to benchmark")
+parser.add_argument('--prune', default=None, type=int,
+                    help='The amount to prune.')
+parser.add_argument('--save', default=None, type=str,
+                    help='The save path for weights.')
 
 best_acc1 = 0
 
@@ -137,12 +142,12 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
-    if args.pretrained:
-        print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.__dict__[args.arch](pretrained=True)
-    else:
-        print("=> creating model '{}'".format(args.arch))
-        model = models.__dict__[args.arch]()
+    # if args.pretrained:
+    print("=> using pre-trained model '{}'".format(args.arch))
+    model = models.__dict__[args.arch](pretrained=True)
+    # else:
+    #     print("=> creating model '{}'".format(args.arch))
+    #     model = models.__dict__[args.arch]()
 
     if not torch.cuda.is_available() and not torch.backends.mps.is_available():
         print('using CPU, this will be slow')
@@ -170,7 +175,11 @@ def main_worker(gpu, ngpus_per_node, args):
         model = model.cuda(args.gpu)
     elif torch.backends.mps.is_available():
         device = torch.device("mps")
+        model = apply_prune(model, args.prune)
+        print("=> Structured pruning of '{}' applied.".format(args.prune))
         model = model.to(device)
+
+
     else:
         # DataParallel will divide and allocate batch_size to all available GPUs
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
@@ -269,10 +278,12 @@ def main_worker(gpu, ngpus_per_node, args):
         validate(val_loader, model, criterion, args)
         return
 
-    for epoch in range(args.start_epoch, args.epochs):
+    print("=> Model started training.")
+    for epoch in range(0, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
+        print("=> Currently running epoch:", epoch)
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, device, args)
 
