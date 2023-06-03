@@ -60,8 +60,6 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
-parser.add_argument('--world-size', default=-1, type=int,
-                    help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training')
 parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
@@ -72,21 +70,22 @@ parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
-parser.add_argument('--multiprocessing-distributed', action='store_true',
+parser.add_argument('--m-distributed', action='store_true',
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
-parser.add_argument('--dummy', action='store_true', help="use fake data to benchmark")
 parser.add_argument('--prune', default=None, type=float,
                     help='The amount to prune.')
 parser.add_argument('--save', default=None, type=str,
                     help='The save path for weights.')
 
 best_acc1 = 0
+world_size = 1
 
 
 def main():
+    global world_size
     args = parser.parse_args()
 
     if args.seed is not None:
@@ -104,10 +103,10 @@ def main():
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
-    if args.dist_url == "env://" and args.world_size == -1:
-        args.world_size = int(os.environ["WORLD_SIZE"])
+    if args.dist_url == "env://" and world_size == -1:
+        world_size = int(os.environ["WORLD_SIZE"])
 
-    args.distributed = args.world_size > 1 or args.multiprocessing_distributed
+    args.distributed = world_size > 1 or args.multiprocessing_distributed
 
     if torch.cuda.is_available():
         ngpus_per_node = torch.cuda.device_count()
@@ -116,7 +115,7 @@ def main():
     if args.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
         # needs to be adjusted accordingly
-        args.world_size = ngpus_per_node * args.world_size
+        world_size = ngpus_per_node * world_size
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
         mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
@@ -126,7 +125,7 @@ def main():
 
 
 def main_worker(gpu, ngpus_per_node, args):
-    global best_acc1
+    global best_acc1, world_size
     args.gpu = gpu
 
     if args.gpu is not None:
@@ -140,7 +139,7 @@ def main_worker(gpu, ngpus_per_node, args):
             # global rank among all the processes
             args.rank = args.rank * ngpus_per_node + gpu
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
-                                world_size=args.world_size, rank=args.rank)
+                                world_size=world_size, rank=args.rank)
     # create model
     # if args.pretrained:
     print("=> using pre-trained model '{}'".format(args.arch))
@@ -175,8 +174,8 @@ def main_worker(gpu, ngpus_per_node, args):
         model = model.cuda(args.gpu)
     elif torch.backends.mps.is_available():
         device = torch.device("mps")
-        model = apply_prune(model, args.prune)
-        print("=> Structured pruning of '{}' applied.".format(args.prune))
+        # model = apply_prune(model, args.prune)
+        # print("=> Structured pruning of '{}' applied.".format(args.prune))
         model = model.to(device)
 
 
@@ -230,34 +229,28 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
-    # Data loading code
-    if args.dummy:
-        print("=> Dummy data is used!")
-        train_dataset = datasets.FakeData(1281167, (3, 224, 224), 1000, transforms.ToTensor())
-        val_dataset = datasets.FakeData(50000, (3, 224, 224), 1000, transforms.ToTensor())
-    else:
-        traindir = os.path.join(args.data, 'train')
-        valdir = os.path.join(args.data, 'val')
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
+    traindir = os.path.join(args.data, 'train')
+    valdir = os.path.join(args.data, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
 
-        train_dataset = datasets.ImageFolder(
-            traindir,
-            transforms.Compose([
-                transforms.RandomResizedCrop(224),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize,
-            ]))
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]))
 
-        val_dataset = datasets.ImageFolder(
-            valdir,
-            transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                normalize,
-            ]))
+    val_dataset = datasets.ImageFolder(
+        valdir,
+        transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ]))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -278,34 +271,74 @@ def main_worker(gpu, ngpus_per_node, args):
         validate(val_loader, model, criterion, args)
         return
 
-    print("=> Model started training.")
-    for epoch in range(0, args.epochs):
-        if args.distributed:
-            train_sampler.set_epoch(epoch)
+    import torch_pruning as tp
+    example_inputs = torch.randn(1, 3, 224, 224)
+    imp = tp.importance.TaylorImportance()
 
-        print("=> Currently running epoch:", epoch)
-        # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, device, args)
+    ignored_layers = []
+    for m in model.modules():
+        if isinstance(m, torch.nn.Linear) and m.out_features == 1000:
+            ignored_layers.append(m)  # DO NOT prune the final classifier!
 
-        # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, args)
+    iterative_steps = 5  # progressive pruning
+    prune_amounts = [x / 64 for x in range(64)]
+    pruner = tp.pruner.MagnitudePruner(
+        model,
+        example_inputs,
+        importance=imp,
+        iterative_steps=iterative_steps,
+        ch_sparsity=args.prune,
+        ignored_layers=ignored_layers,
+    )
 
-        scheduler.step()
+    base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
+    print("Original macs and params", base_macs, base_nparams)
+    for i in range(iterative_steps):
+        if isinstance(imp, tp.importance.TaylorImportance):
+            # Taylor expansion requires gradients for importance estimation
+            loss = model(example_inputs).sum()  # a dummy loss for TaylorImportance
+            loss.backward()  # before pruner.step()
+        pruner.step()
+        macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
+        print(
+            "  Iter %d/%d, Params: %.2f M => %.2f M"
+            % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
+        )
+        print(
+            "  Iter %d/%d, MACs: %.2f G => %.2f G"
+            % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
+        )
+        print("hist", pruner.pruning_history())
+        # finetune your model here
 
-        # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
+        print("=> Model fine-tuning started.")
+        for epoch in range(0, args.epochs):
+            if args.distributed:
+                train_sampler.set_epoch(epoch)
 
-        if not args.multiprocessing_distributed or (args.multiprocessing_distributed
-                                                    and args.rank % ngpus_per_node == 0):
-            save_checkpoint({
-                'epoch': epoch + 1,
-                'arch': args.arch,
-                'state_dict': model.state_dict(),
-                'best_acc1': best_acc1,
-                'optimizer': optimizer.state_dict(),
-                'scheduler': scheduler.state_dict()
-            }, is_best)
+            print("=> Currently running epoch:", epoch)
+            # train for one epoch
+            train(train_loader, model, criterion, optimizer, epoch, device, args)
+
+            # evaluate on validation set
+            acc1 = validate(val_loader, model, criterion, args)
+
+            scheduler.step()
+
+            # remember best acc@1 and save checkpoint
+            is_best = acc1 > best_acc1
+            best_acc1 = max(acc1, best_acc1)
+
+
+        save_checkpoint({
+            'epoch': epoch + 1,
+            'arch': args.arch,
+            'state_dict': model.state_dict(),
+            'best_acc1': best_acc1,
+            'optimizer': optimizer.state_dict(),
+            'scheduler': scheduler.state_dict()
+        }, is_best)
+
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
@@ -390,7 +423,7 @@ def validate(val_loader, model, criterion, args):
     top1 = AverageMeter('Acc@1', ':6.2f', Summary.AVERAGE)
     top5 = AverageMeter('Acc@5', ':6.2f', Summary.AVERAGE)
     progress = ProgressMeter(
-        len(val_loader) + (args.distributed and (len(val_loader.sampler) * args.world_size < len(val_loader.dataset))),
+        len(val_loader) + (args.distributed and (len(val_loader.sampler) * world_size < len(val_loader.dataset))),
         [batch_time, losses, top1, top5],
         prefix='Test: ')
 
@@ -402,9 +435,9 @@ def validate(val_loader, model, criterion, args):
         top1.all_reduce()
         top5.all_reduce()
 
-    if args.distributed and (len(val_loader.sampler) * args.world_size < len(val_loader.dataset)):
+    if args.distributed and (len(val_loader.sampler) * world_size < len(val_loader.dataset)):
         aux_val_dataset = Subset(val_loader.dataset,
-                                 range(len(val_loader.sampler) * args.world_size, len(val_loader.dataset)))
+                                 range(len(val_loader.sampler) * world_size, len(val_loader.dataset)))
         aux_val_loader = torch.utils.data.DataLoader(
             aux_val_dataset, batch_size=args.batch_size, shuffle=False,
             num_workers=args.workers, pin_memory=True)
