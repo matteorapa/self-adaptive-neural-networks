@@ -22,6 +22,10 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Subset
 
+import torch_pruning as tp
+from torchinfo import summary
+import os
+
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
@@ -271,16 +275,10 @@ def main_worker(gpu, ngpus_per_node, args):
         validate(val_loader, model, criterion, args)
         return
 
-    import torch
-    from torchvision.models import resnet18, resnet50
-    import torch_pruning as tp
-    from torchinfo import summary
-    import os
-
     sparsities = [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75]
 
     for sparsity in sparsities:
-        model = resnet18(pretrained=True)
+        model = models.resnet50(pretrained=True)
 
         # Importance criteria
         example_inputs = torch.randn(1, 3, 224, 224)
