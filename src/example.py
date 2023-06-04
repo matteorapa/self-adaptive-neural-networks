@@ -271,73 +271,102 @@ def main_worker(gpu, ngpus_per_node, args):
         validate(val_loader, model, criterion, args)
         return
 
+    import torch
+    from torchvision.models import resnet18, resnet50
     import torch_pruning as tp
-    example_inputs = torch.randn(1, 3, 224, 224)
-    imp = tp.importance.TaylorImportance()
+    from torchinfo import summary
+    import os
 
-    ignored_layers = []
-    for m in model.modules():
-        if isinstance(m, torch.nn.Linear) and m.out_features == 1000:
-            ignored_layers.append(m)  # DO NOT prune the final classifier!
+    sparsities = [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75]
 
-    iterative_steps = 5  # progressive pruning
-    prune_amounts = [x / 64 for x in range(64)]
-    pruner = tp.pruner.MagnitudePruner(
-        model,
-        example_inputs,
-        importance=imp,
-        iterative_steps=iterative_steps,
-        ch_sparsity=args.prune,
-        ignored_layers=ignored_layers,
-    )
+    for sparsity in sparsities:
+        model = resnet18(pretrained=True)
 
-    base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
-    print("Original macs and params", base_macs, base_nparams)
-    for i in range(iterative_steps):
-        if isinstance(imp, tp.importance.TaylorImportance):
-            # Taylor expansion requires gradients for importance estimation
-            loss = model(example_inputs).sum()  # a dummy loss for TaylorImportance
-            loss.backward()  # before pruner.step()
-        pruner.step()
-        macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
-        print(
-            "  Iter %d/%d, Params: %.2f M => %.2f M"
-            % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
+        # Importance criteria
+        example_inputs = torch.randn(1, 3, 224, 224)
+        imp = tp.importance.TaylorImportance()
+
+        ignored_layers = []
+        for m in model.modules():
+            if isinstance(m, torch.nn.Linear) and m.out_features == 1000:
+                ignored_layers.append(m)  # DO NOT prune the final classifier!
+
+        iterative_steps = 5  # progressive pruning
+        current_step = 1
+        prune_amounts = [x / 64 for x in range(48)]
+
+        pruner = tp.pruner.MagnitudePruner(
+            model,
+            example_inputs,
+            importance=imp,
+            iterative_steps=iterative_steps,
+            ch_sparsity=sparsity,
+            ignored_layers=ignored_layers,
         )
-        print(
-            "  Iter %d/%d, MACs: %.2f G => %.2f G"
-            % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
-        )
-        print("hist", pruner.pruning_history())
+
+        base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
+
+        print("Pruning sparsity:", sparsity, )
+        for i in range(iterative_steps):
+            if isinstance(imp, tp.importance.TaylorImportance):
+                # Taylor expansion requires gradients for importance estimation
+                loss = model(example_inputs).sum()  # a dummy loss for TaylorImportance
+                loss.backward()  # before pruner.step()
+            pruner.step()
+            macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
+            print("Pruning step:", current_step, "multiply–accumulate (macs):", macs, "number of parameters", nparams)
+            current_step += 1
+            print(
+                "  Iter %d/%d, Params: %.2f M => %.2f M"
+                % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
+            )
+            print(
+                "  Iter %d/%d, MACs: %.2f G => %.2f G"
+                % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
+            )
+
+        # state_dict = tp.state_dict(model)  # the pruned model, e.g., a resnet-18-half
+        # torch.save(state_dict, "./resnet18/" + str(sparsity) + "_" + 'pruned.pth')
+        model_statistics = summary(model, (1, 3, 224, 224), depth=3,
+                                   col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
+        model_statistics_str = str(model_statistics)
+
+        # import pickle
+        # with open("./resnet18/" + str(sparsity) + "_" + 'statistics.txt', 'wb') as f:
+        #     pickle.dump(model_statistics_str, f)
+        validate(val_loader, criterion, model, args)
+        print(model)
+
+
+
         # finetune your model here
-
-        print("=> Model fine-tuning started.")
-        for epoch in range(0, args.epochs):
-            if args.distributed:
-                train_sampler.set_epoch(epoch)
-
-            print("=> Currently running epoch:", epoch)
-            # train for one epoch
-            train(train_loader, model, criterion, optimizer, epoch, device, args)
-
-            # evaluate on validation set
-            acc1 = validate(val_loader, model, criterion, args)
-
-            scheduler.step()
-
-            # remember best acc@1 and save checkpoint
-            is_best = acc1 > best_acc1
-            best_acc1 = max(acc1, best_acc1)
-
-
-        save_checkpoint({
-            'epoch': epoch + 1,
-            'arch': args.arch,
-            'state_dict': model.state_dict(),
-            'best_acc1': best_acc1,
-            'optimizer': optimizer.state_dict(),
-            'scheduler': scheduler.state_dict()
-        }, is_best)
+        # print("=> Model fine-tuning started.")
+        # for epoch in range(0, args.epochs):
+        #     if args.distributed:
+        #         train_sampler.set_epoch(epoch)
+        #
+        #     print("=> Currently running epoch:", epoch)
+        #     # train for one epoch
+        #     train(train_loader, model, criterion, optimizer, epoch, device, args)
+        #
+        #     # evaluate on validation set
+        #     acc1 = validate(val_loader, model, criterion, args)
+        #
+        #     scheduler.step()
+        #
+        #     # remember best acc@1 and save checkpoint
+        #     is_best = acc1 > best_acc1
+        #     best_acc1 = max(acc1, best_acc1)
+        #
+        #
+        # save_checkpoint({
+        #     'epoch': epoch + 1,
+        #     'arch': args.arch,
+        #     'state_dict': model.state_dict(),
+        #     'best_acc1': best_acc1,
+        #     'optimizer': optimizer.state_dict(),
+        #     'scheduler': scheduler.state_dict()
+        # }, is_best)
 
 
 

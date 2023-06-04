@@ -2,11 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af09428b-1b75-4ff0-94af-89eaa01d575a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/notebooks/custom.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/hope.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/simple.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/new.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notebooks/hope.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/hope.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/notebooks/model.pth" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/example.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/example.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
