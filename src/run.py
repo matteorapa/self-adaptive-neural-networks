@@ -32,11 +32,11 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> using pre-trained model '{}'".format(args.arch))
     model = models.__dict__[args.arch](pretrained=True)
 
-    device = torch.device("cuda")
+    device = torch.device(0)
     torch.cuda.set_device(device)
     model.cuda()
 
-    device = torch.device("cuda")
+    device = torch.device(0)
 
     # define loss function (criterion), optimizer, and learning rate scheduler
     criterion = nn.CrossEntropyLoss().to(device)
