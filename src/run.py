@@ -23,30 +23,15 @@ from torch.utils.data import Subset
 import torch_pruning as tp
 from torchinfo import summary
 
-def main_worker(gpu, ngpus_per_node, args):
+def main_worker(args):
     global best_acc1, world_size
-    if args.gpu is not None:
-        print("Use GPU: {} for training".format(args.gpu))
-
 
     print("=> using pre-trained model '{}'".format(args.arch))
-    model = models.__dict__[args.arch](pretrained=True)
 
-    device = torch.device(0)
-    torch.cuda.set_device(device)
-    model.cuda()
-
-    device = torch.device(0)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # define loss function (criterion), optimizer, and learning rate scheduler
     criterion = nn.CrossEntropyLoss().to(device)
-
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
-
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
 
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
@@ -86,10 +71,18 @@ def main_worker(gpu, ngpus_per_node, args):
     sparsities = [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75]
 
     for sparsity in sparsities:
-        model = models.resnet50(pretrained=True)
+        model = models.__dict__[args.arch](pretrained=True)
+        model.cuda()
+
+        optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                    momentum=args.momentum,
+                                    weight_decay=args.weight_decay)
+
+        """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+        scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
 
         # Importance criteria
-        example_inputs = torch.randn(1, 3, 224, 224)
+        example_inputs = torch.randn(1, 3, 224, 224).to(device)
         imp = tp.importance.TaylorImportance()
 
         ignored_layers = []
@@ -101,35 +94,35 @@ def main_worker(gpu, ngpus_per_node, args):
         current_step = 1
         prune_amounts = [x / 64 for x in range(48)]
 
-        pruner = tp.pruner.MagnitudePruner(
-            model,
-            example_inputs,
-            importance=imp,
-            iterative_steps=iterative_steps,
-            ch_sparsity=sparsity,
-            ignored_layers=ignored_layers,
-        )
+        # pruner = tp.pruner.MagnitudePruner(
+        #     model,
+        #     example_inputs,
+        #     importance=imp,
+        #     iterative_steps=iterative_steps,
+        #     ch_sparsity=sparsity,
+        #     ignored_layers=ignored_layers,
+        # )
 
         base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
 
-        print("Pruning sparsity:", sparsity, )
-        for i in range(iterative_steps):
-            if isinstance(imp, tp.importance.TaylorImportance):
-                # Taylor expansion requires gradients for importance estimation
-                loss = model(example_inputs).sum()  # a dummy loss for TaylorImportance
-                loss.backward()  # before pruner.step()
-            pruner.step()
-            macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
-            print("Pruning step:", current_step, "multiply–accumulate (macs):", macs, "number of parameters", nparams)
-            current_step += 1
-            print(
-                "  Iter %d/%d, Params: %.2f M => %.2f M"
-                % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
-            )
-            print(
-                "  Iter %d/%d, MACs: %.2f G => %.2f G"
-                % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
-            )
+        # print("Pruning sparsity:", sparsity, )
+        # for i in range(iterative_steps):
+        #     if isinstance(imp, tp.importance.TaylorImportance):
+        #         # Taylor expansion requires gradients for importance estimation
+        #         loss = model(example_inputs).sum()  # a dummy loss for TaylorImportance
+        #         loss.backward()  # before pruner.step()
+        #     pruner.step()
+        #     macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
+        #     print("Pruning step:", current_step, "multiply–accumulate (macs):", macs, "number of parameters", nparams)
+        #     current_step += 1
+        #     print(
+        #         "  Iter %d/%d, Params: %.2f M => %.2f M"
+        #         % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
+        #     )
+        #     print(
+        #         "  Iter %d/%d, MACs: %.2f G => %.2f G"
+        #         % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
+        #     )
 
         # state_dict = tp.state_dict(model)  # the pruned model, e.g., a resnet-18-half
         # torch.save(state_dict, "./resnet18/" + str(sparsity) + "_" + 'pruned.pth')
@@ -219,36 +212,6 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
             progress.display(i + 1)
 
 def validate(val_loader, model, criterion, args):
-    def run_validate(loader, base_progress=0):
-        with torch.no_grad():
-            end = time.time()
-            for i, (images, target) in enumerate(loader):
-                i = base_progress + i
-                if args.gpu is not None and torch.cuda.is_available():
-                    images = images.cuda(args.gpu, non_blocking=True)
-                if torch.backends.mps.is_available():
-                    images = images.to('mps')
-                    target = target.to('mps')
-                if torch.cuda.is_available():
-                    target = target.cuda(args.gpu, non_blocking=True)
-
-                # compute output
-                output = model(images)
-                loss = criterion(output, target)
-
-                # measure accuracy and record loss
-                acc1, acc5 = accuracy(output, target, topk=(1, 5))
-                losses.update(loss.item(), images.size(0))
-                top1.update(acc1[0], images.size(0))
-                top5.update(acc5[0], images.size(0))
-
-                # measure elapsed time
-                batch_time.update(time.time() - end)
-                end = time.time()
-
-                if i % args.print_freq == 0:
-                    progress.display(i + 1)
-
     batch_time = AverageMeter('Time', ':6.3f', Summary.NONE)
     losses = AverageMeter('Loss', ':.4e', Summary.NONE)
     top1 = AverageMeter('Acc@1', ':6.2f', Summary.AVERAGE)
@@ -261,7 +224,29 @@ def validate(val_loader, model, criterion, args):
     # switch to evaluate mode
     model.eval()
 
-    run_validate(val_loader)
+    with torch.no_grad():
+        end = time.time()
+        for i, (images, target) in enumerate(val_loader):
+            i = 0 + i
+            images = images.cuda(non_blocking=True)
+            target = target.cuda(non_blocking=True)
+
+            # compute output
+            output = model(images)
+            loss = criterion(output, target)
+
+            # measure accuracy and record loss
+            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            losses.update(loss.item(), images.size(0))
+            top1.update(acc1[0], images.size(0))
+            top5.update(acc5[0], images.size(0))
+
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            if i % args.print_freq == 0:
+                progress.display(i + 1)
 
     progress.display_summary()
 
@@ -377,16 +362,16 @@ if __name__ == '__main__':
                          and callable(models.__dict__[name]))
 
     parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-    parser.add_argument('data', metavar='DIR', nargs='?', default='imagenet',
-                        help='path to dataset (default: imagenet)')
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+    parser.add_argument('data', metavar='DIR', nargs='?', default='../data',
+                        help='path to dataset (default: data)')
+    parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                         choices=model_names,
                         help='model architecture: ' +
                              ' | '.join(model_names) +
-                             ' (default: resnet18)')
+                             ' (default: resnet50)')
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                         help='number of data loading workers (default: 4)')
-    parser.add_argument('--epochs', default=90, type=int, metavar='N',
+    parser.add_argument('--epochs', default=10, type=int, metavar='N',
                         help='number of total epochs to run')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
@@ -436,4 +421,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.batch_size = int(args.batch_size)
     args.workers = int(args.workers)
-    main_worker(args.gpu, 1, args)
+    main_worker(args)
