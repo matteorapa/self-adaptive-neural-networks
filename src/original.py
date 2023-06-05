@@ -311,17 +311,9 @@ def main_worker(gpu, ngpus_per_node, args):
             % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
         )
 
-
-    model_statistics = summary(model, (1, 3, 224, 224), depth=3,
-                               col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
-
-    model_statistics_str = str(model_statistics)
-
-    # import pickle
-    # with open("./resnet18/" + str(sparsity) + "_" + 'statistics.txt', 'wb') as f:
-    #     pickle.dump(model_statistics_str, f)
-
-    for epoch in range(args.start_epoch, args.epochs):
+    print("Starting tuning...")
+    for epoch in range(0, args.epochs):
+        print()
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
@@ -330,24 +322,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, args)
-
-        scheduler.step()
-
-        # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
-
-    # validate(val_loader, model, criterion, args)
-
-    for epoch in range(args.start_epoch, args.epochs):
-        if args.distributed:
-            train_sampler.set_epoch(epoch)
-
-        # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, device, args)
-
-        # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, args)
+        print("Accuracy:", str(acc1))
 
         scheduler.step()
 
@@ -357,6 +332,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     state_dict = tp.state_dict(model)  # the pruned model
     torch.save(state_dict, str(sparsity) + "_tuned_" + 'pruned.pth')
+
+    model_statistics = summary(model, (1, 3, 224, 224), depth=3,
+                               col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
+    model_statistics_str = str(model_statistics)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
