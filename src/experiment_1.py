@@ -309,7 +309,7 @@ def main_worker(gpu, ngpus_per_node, args):
             "  Iter %d/%d, MACs: %.2f G => %.2f G"
             % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
         )
-        for epoch in range(0, args.epoch/iterative_steps):
+        for epoch in range(0, args.epochs/iterative_steps):
             if args.distributed:
                 train_sampler.set_epoch(epoch)
 

@@ -1,27 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="af09428b-1b75-4ff0-94af-89eaa01d575a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/notebooks/writelist" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/hope.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/pruned.pth" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/pruned.pth" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.0625_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.125_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.1875_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.25_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.3125_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.375_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.4375_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.5625_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.5_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.625_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.6875_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0.75_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/resnet50/0_statistics.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/results.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/results.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/original.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/original.py" afterDir="false" />
-    </list>
+    <list default="true" id="af09428b-1b75-4ff0-94af-89eaa01d575a" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
