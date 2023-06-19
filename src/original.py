@@ -28,7 +28,7 @@ model_names = sorted(name for name in models.__dict__
                      and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('data', metavar='DIR', nargs='?', default='../../data',
+parser.add_argument('data', metavar='DIR', nargs='?', default='../data',
                     help='path to dataset (default: imagenet)')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
@@ -37,7 +37,7 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                          ' (default: resnet18)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
+parser.add_argument('--epochs', default=20, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -53,7 +53,7 @@ parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)',
                     dest='weight_decay')
-parser.add_argument('-p', '--print-freq', default=10, type=int,
+parser.add_argument('-p', '--print-freq', default=100, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -277,7 +277,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     sparsities = [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75]
 
-    iterative_steps = 5  # progressive pruning
+    iterative_steps = 1  # progressive pruning
     current_step = 1
     sparsity = args.prune
 
@@ -310,15 +310,31 @@ def main_worker(gpu, ngpus_per_node, args):
             "  Iter %d/%d, MACs: %.2f G => %.2f G"
             % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
         )
+        for epoch in range(0, args.epoch):
+            if args.distributed:
+                train_sampler.set_epoch(epoch)
 
+            # train for one epoch
+            train(val_loader, model, criterion, optimizer, epoch, device, args)
+
+            # evaluate on validation set
+            acc1 = validate(val_loader, model, criterion, args)
+            print("Accuracy:", str(acc1))
+
+            scheduler.step()
+
+            # remember best acc@1 and save checkpoint
+            is_best = acc1 > best_acc1
+            best_acc1 = max(acc1, best_acc1)
+
+    # validate(val_loader, model, criterion, args)
     print("Starting tuning...")
-    for epoch in range(0, args.epochs):
-        print()
+    for epoch in range(0, 0):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, device, args)
+        train(val_loader, model, criterion, optimizer, epoch, device, args)
 
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, args)
@@ -337,6 +353,67 @@ def main_worker(gpu, ngpus_per_node, args):
                                col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
     model_statistics_str = str(model_statistics)
 
+    from functools import reduce
+    def get_module_by_name(model, access_string):
+        names = access_string.split(sep='.')
+        return reduce(getattr, names, model)
+    
+    # handle multiple pruning steps
+    pruning_history = pruner.pruning_history()
+
+    from torchvision.models import resnet18
+    original_model = resnet18(pretrained=True)
+    original_model.to(device)
+    print("=> Rebuilding model")
+
+    # Rebuilding
+    # Get pruning history, find the channels that were not removed (present in the pruned model), and copy the tuned weights back to the original model
+
+    for pruned_layer_name, b, channels_removed in pruning_history:
+        for layer_name, original_layer in original_model.named_parameters():
+            if(layer_name == pruned_layer_name+".weight"):
+                    print(layer_name, pruned_layer_name+".weight")
+
+                    tuned_layer = get_module_by_name(model, pruned_layer_name)
+                    
+                    channels_removed.sort()
+                    channels_removed_count = len(channels_removed)
+                    list_index = 0
+                    fill_index = channels_removed[list_index] # start with the idx of the first channel removed
+
+                    for idx, param in enumerate(tuned_layer.weight.data): # the channels here do not match the order of the original layer
+                        if(fill_index == idx):
+                            # keep same channel weight data, as the channel was dropped in the pruning
+                            if(channels_removed_count - 1 < list_index):
+                                # when the last channel index has not been filled, set to the next index of channels dropepd 
+                                fill_index = channels_removed[list_index + 1]
+                        else:
+                            # Use weight data from the pruned-tuned model
+                            original_layer = tuned_layer.weight.data 
+
+    # fine tune the pruned channels, with the updated weights used for the tuned channels
+
+    print("=> Rebuilt model")
+    for epoch in range(0, 0):
+        if args.distributed:
+            train_sampler.set_epoch(epoch)
+
+        # train for one epoch
+        train(val_loader, original_model, criterion, optimizer, epoch, device, args)
+
+        # evaluate on validation set
+        acc1 = validate(val_loader, model, criterion, args)
+        print("Accuracy:", str(acc1))
+
+        scheduler.step()
+
+        # remember best acc@1 and save checkpoint
+        is_best = acc1 > best_acc1
+        best_acc1 = max(acc1, best_acc1)
+
+    validate(val_loader, original_model, criterion, args)
+    # we only want to update the weights of the channels that were dropped (not to effect the pruned model accuracy)
+    # recopy tuned channels weights back to full model, to remove updates
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
     batch_time = AverageMeter('Time', ':6.3f')
