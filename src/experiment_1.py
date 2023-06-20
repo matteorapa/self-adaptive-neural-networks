@@ -276,7 +276,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     sparsities = [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75]
 
-    iterative_steps = 4
+    iterative_steps = 5
     current_step = 1
     sparsity = args.prune
 
@@ -293,7 +293,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     print("Pruning sparsity:", sparsity)
     state_dict = tp.state_dict(model)  # the pruned model
-    torch.save(state_dict, "before_exp_1_model_resnet50_prune_" + str(args.prune) + "_step_" + str(i) + "_epochs_" + str(args.epochs) + "_pruned.pth")
+    torch.save(state_dict, "before_exp_1_model_resnet50_prune_" + str(args.prune) + "_epochs_" + str(args.epochs) + "_pruned.pth")
 
     for i in range(iterative_steps):
         if isinstance(imp, tp.importance.TaylorImportance):
