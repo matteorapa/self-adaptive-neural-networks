@@ -292,6 +292,9 @@ def main_worker(gpu, ngpus_per_node, args):
     base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
 
     print("Pruning sparsity:", sparsity)
+    state_dict = tp.state_dict(model)  # the pruned model
+    torch.save(state_dict, "before_exp_1_model_resnet50_prune_" + str(args.prune) + "_step_" + str(i) + "_epochs_" + str(args.epochs) + "_pruned.pth")
+
     for i in range(iterative_steps):
         if isinstance(imp, tp.importance.TaylorImportance):
             # Taylor expansion requires gradients for importance estimation
@@ -326,7 +329,7 @@ def main_worker(gpu, ngpus_per_node, args):
             best_acc1 = max(acc1, best_acc1)
 
         state_dict = tp.state_dict(model)  # the pruned model
-        torch.save(state_dict, "exp_1_model_resnet50_prune_"+str(args.prune)+"_step_"+ str(i) +"_epochs_"+args.epochs+"_pruned.pth")
+        torch.save(state_dict, "exp_1_model_resnet50_prune_"+str(args.prune)+"_step_"+ str(i) +"_epochs_"+str(args.epochs)+"_pruned.pth")
 
     validate(val_loader, model, criterion, args)
 

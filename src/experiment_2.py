@@ -41,7 +41,7 @@ parser.add_argument('--epochs', default=20, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
+parser.add_argument('-b', '--batch-size', default=512, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -310,6 +310,16 @@ def main_worker(gpu, ngpus_per_node, args):
             % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
         )
 
+    history = pruner.pruning_history()
+    layers_affected = len(history)
+    layers_affected_per_step = int(layers_affected / iterative_steps)
+    step_history = [history[i:i + layers_affected_per_step] for i in
+                    range(0, layers_affected, layers_affected_per_step)]
+
+    import pickle
+    with open(str(args.prune) + '_history_exp2', 'wb') as temp:
+        pickle.dump(step_history, temp)
+
     validate(val_loader, model, criterion, args)
 
     print("Starting fine-tuning...")
@@ -325,22 +335,14 @@ def main_worker(gpu, ngpus_per_node, args):
         print("Accuracy:", str(acc1))
 
         scheduler.step()
-
-    state_dict = tp.state_dict(model)  # the pruned model
-    torch.save(state_dict, "exp_2_model_resnet50_prune_"+str(args.prune)+"_single_epochs_"+args.epochs+"_pruned.pth")
+        state_dict = tp.state_dict(model)  # the pruned model
+        torch.save(state_dict, "exp_2_model_resnet50_prune_"+str(args.prune)+"_single_epochs_"+str(args.epochs)+"_epoch"+str(epoch)+"pruned.pth")
 
     model_statistics = summary(model, (1, 3, 224, 224), depth=3,
                                col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
     model_statistics_str = str(model_statistics)
 
-    history = pruner.pruning_history()
-    layers_affected = len(history)
-    layers_affected_per_step = int(layers_affected / iterative_steps)
-    step_history = [history[i:i + layers_affected_per_step] for i in
-                    range(0, layers_affected, layers_affected_per_step)]
-    import pickle
-    with open(str(args.prune) + '_history_exp2', 'wb') as temp:
-        pickle.dump(step_history, temp)
+
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, args):
