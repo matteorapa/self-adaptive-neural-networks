@@ -5,6 +5,9 @@ import shutil
 import time
 import warnings
 from enum import Enum
+import copy
+from functools import reduce
+import pickle
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -41,7 +44,7 @@ parser.add_argument('--epochs', default=20, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
+parser.add_argument('-b', '--batch-size', default=16, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -188,67 +191,29 @@ def main_worker(gpu, ngpus_per_node, args):
         device = torch.device("mps")
     else:
         device = torch.device("cpu")
-    # define loss function (criterion), optimizer, and learning rate scheduler
-    criterion = nn.CrossEntropyLoss().to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
-                                weight_decay=args.weight_decay)
+    traindir = os.path.join(args.data, 'train')
+    valdir = os.path.join(args.data, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
 
-    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose([
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            normalize,
+        ]))
 
-    # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            if args.gpu is None:
-                checkpoint = torch.load(args.resume)
-            elif torch.cuda.is_available():
-                # Map model to be loaded to specified single gpu.
-                loc = 'cuda:{}'.format(args.gpu)
-                checkpoint = torch.load(args.resume, map_location=loc)
-            args.start_epoch = checkpoint['epoch']
-            best_acc1 = checkpoint['best_acc1']
-            if args.gpu is not None:
-                # best_acc1 may be from a checkpoint from a different GPU
-                best_acc1 = best_acc1.to(args.gpu)
-            model.load_state_dict(checkpoint['state_dict'])
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            scheduler.load_state_dict(checkpoint['scheduler'])
-            print("=> loaded checkpoint '{}' (epoch {})"
-                  .format(args.resume, checkpoint['epoch']))
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
-
-    # Data loading code
-    if args.dummy:
-        print("=> Dummy data is used!")
-        train_dataset = datasets.FakeData(1281167, (3, 224, 224), 1000, transforms.ToTensor())
-        val_dataset = datasets.FakeData(50000, (3, 224, 224), 1000, transforms.ToTensor())
-    else:
-        traindir = os.path.join(args.data, 'train')
-        valdir = os.path.join(args.data, 'val')
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
-
-        train_dataset = datasets.ImageFolder(
-            traindir,
-            transforms.Compose([
-                transforms.RandomResizedCrop(224),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize,
-            ]))
-
-        val_dataset = datasets.ImageFolder(
-            valdir,
-            transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                normalize,
-            ]))
+    val_dataset = datasets.ImageFolder(
+        valdir,
+        transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ]))
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -265,85 +230,183 @@ def main_worker(gpu, ngpus_per_node, args):
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True, sampler=val_sampler)
 
-    # Importance criteria
-    example_inputs = torch.randn(1, 3, 224, 224).to(device)
-    imp = tp.importance.TaylorImportance()
+    # validate(val_loader, model, criterion, args)
 
-    ignored_layers = []
-    for m in model.modules():
-        if isinstance(m, torch.nn.Linear) and m.out_features == 1000:
-            ignored_layers.append(m)  # DO NOT prune the final classifier!
+    model.to(device)
+    criterion = nn.CrossEntropyLoss().to(device)
 
-    sparsities = [0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75]
+    optimizer = torch.optim.SGD(model.parameters(), args.lr,
+                                momentum=args.momentum,
+                                weight_decay=args.weight_decay)
 
-    iterative_steps = 1  # progressive pruning
-    current_step = 1
-    sparsity = args.prune
+    scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
 
-    pruner = tp.pruner.MagnitudePruner(
-        model,
-        example_inputs,
-        importance=imp,
-        iterative_steps=iterative_steps,
-        ch_sparsity=sparsity,
-        ignored_layers=ignored_layers,
-    )
+    def get_module_by_name(model, access_string):
+        names = access_string.split(sep='.')
+        return reduce(getattr, names, model)
 
-    base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
+    def save_checkpoint(state, filepath, name):
+        torch.save(state, os.path.join(filepath, name+'checkpoint.pth'))
 
-    print("Pruning sparsity:", sparsity)
-    for i in range(iterative_steps):
-        if isinstance(imp, tp.importance.TaylorImportance):
-            # Taylor expansion requires gradients for importance estimation
-            loss = model(example_inputs).sum()  # a dummy loss for TaylorImportance
-            loss.backward()  # before pruner.step()
-        pruner.step()
-        macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
-        print("Pruning step:", current_step, "multiply–accumulate (macs):", macs, "number of parameters", nparams)
-        current_step += 1
-        print(
-            "  Iter %d/%d, Params: %.2f M => %.2f M"
-            % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
-        )
-        print(
-            "  Iter %d/%d, MACs: %.2f G => %.2f G"
-            % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
-        )
+    # sparsity = 0.03125
+    # print("Pruning sparsity:", sparsity)
+    # model.eval()
+    #
+    # # Importance criteria
+    # example_inputs = torch.randn(1, 3, 224, 224)
+    # imp = tp.importance.TaylorImportance()
+    #
+    # ignored_layers = []
+    # for m in model.modules():
+    #     if isinstance(m, torch.nn.Linear) and m.out_features == 1000:
+    #         ignored_layers.append(m)
+    #
+    # iterative_steps = 1
+    #
+    # pruner = tp.pruner.MagnitudePruner(
+    #     model,
+    #     example_inputs,
+    #     round_to=None,
+    #     unwrapped_parameters=None,
+    #     importance=imp,
+    #     iterative_steps=iterative_steps,
+    #     ch_sparsity = sparsity,
+    #     ignored_layers=ignored_layers,
+    # )
+    #
+    #
+    # base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
+    #
+    # pruned_models = []
+    # pruned_models.append(copy.deepcopy(model))
+    # pruned_models[-1].to(device)
+    #
+    # for i in range(iterative_steps):
+    #     print("=> pruning model iteration", i)
+    #     if isinstance(imp, tp.importance.TaylorImportance):
+    #         loss = model(example_inputs).sum()
+    #         loss.backward()
+    #     pruner.step()
+    #     pruned_models.append(copy.deepcopy(model))
+    #     pruned_models[-1].to(device)
+    #
+    #     macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
+    #     print(
+    #             "  Iter %d/%d, Params: %.2f M => %.2f M"
+    #             % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
+    #         )
+    #     print(
+    #         "  Iter %d/%d, MACs: %.2f G => %.2f G"
+    #         % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
+    #     )
+    # print("=> evaluate pruned model (No fine-tuning)")
+    # validate(val_loader, pruned_models[0], criterion, args)
+    #
+    # print("=> starting fine-tuning of pruned model...")
+    # for epoch in range(0, 1):
+    #     if args.distributed:
+    #         train_sampler.set_epoch(epoch)
+    #
+    #     train(val_loader, pruned_models[1], criterion, optimizer, epoch, device, args, step_history=None)
+    #     scheduler.step()
+    #
+    # print("=> evaluate pruned and tuned model")
+    # # validate model after pruning and tuning
+    # validate(val_loader, pruned_models[0], criterion, args)
+    # torch.save(tp.state_dict(pruned_models[0]),"exp_3_model_resnet18_pruned_0.3_tuned.pth")
+    #
+    # # model = torch.load('exp_3_model_resnet18_pruned_0.3_tuned.pth')
+    #
+    # # iterative_steps
+    # history = pruner.pruning_history()
+    # layers_affected = len(history)
+    # layers_affected_per_step = int(layers_affected / iterative_steps)
+    # step_history = [history[i:i+layers_affected_per_step] for i in range(0, layers_affected, layers_affected_per_step)]
+    # pruned_models.reverse() # 60, 61, 62, 63, 64
+    # with open('0.3_history_exp3', 'wb') as data:
+    #     pickle.dump(step_history, data)
+    #
+    # print("=> rebuild pruned and tuned model to original size")
+    #
+    # for i, history in enumerate(reversed(step_history)):
+    #     tuned_model = pruned_models[i]
+    #     bigger_model = pruned_models[i+1]
+    #
+    #     # loop through each layer changed in pruning
+    #     for pruned_layer_name, b, channels_removed in reversed(history):
+    #         # loop through the layers of the larger model (same number of layers, different channel width)
+    #         for layer_name, bigger_layer_params in bigger_model.named_parameters():
+    #
+    #             skipped = 0
+    #
+    #             if(layer_name == pruned_layer_name+".weight"):
+    #
+    #                     tuned_layer = get_module_by_name(tuned_model, pruned_layer_name)
+    #                     bigger_layer = get_module_by_name(bigger_model, pruned_layer_name)
+    #
+    #
+    #                     # loop throught the channels of the bigger model
+    #                     for idx in range(bigger_layer.out_channels):
+    #
+    #                         # check if the channel has been dropped
+    #                         if idx in channels_removed:
+    #                             # if channel was dropped, do not copy weights from smaller tuned model
+    #                             # print("Channel was skipped:", channels_removed[skipped])
+    #                             skipped += 1
+    #
+    #                         else:
+    #                             # copy weights from tuned model to larger model
+    #                             if "layer" not in layer_name:
+    #
+    #                                 bigger_layer_params.requires_grad_(False)
+    #                                 bigger_layer_params[idx,:, : ,:] = tuned_layer.weight.data[idx-skipped,:, : ,:]
+    #
+    #                             else: # for conv layers with reshape of both input and output
+    #
+    #                                 bigger_layer_params.requires_grad_(False)
+    #                                 skipped_j = 0
+    #
+    #                                 if (bigger_layer.in_channels - tuned_layer.in_channels) == len(channels_removed):
+    #
+    #                                     for idx_j in range(bigger_layer.in_channels):
+    #
+    #                                         if idx_j in channels_removed:
+    #                                             # if channel was dropped, do not copy weights from smaller tuned model
+    #                                             skipped_j += 1
+    #                                         else:
+    #                                             bigger_layer_params[idx,idx_j, : ,:] = tuned_layer.weight.data[idx-skipped,idx_j-skipped_j, : ,:]
+    #
+    # # validate model after rebuilding, degraded accuracy expected
+    # print("=> evaluate rebuilt model (no fine-tuning)")
+    # validate(val_loader, pruned_models[1], criterion, args)
+    # torch.save(tp.state_dict(pruned_models[0]), "exp_3_model_resnet18_rebuilt_0.3.pth")
 
-    validate(val_loader, model, criterion, args)
+    model = torch.load('exp_3_model_resnet18_pruned_0.3_tuned.pth')
+    model.to(device)
 
-    print("Starting fine-tuning...")
+    with open('0.3_history_exp3', 'rb') as file:
+        step_history = pickle.load(file)
+
+    print("=> Starting fine-tuning of rebuilt model (Only train tune pruned channels)...")
     for epoch in range(0, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
-        # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, device, args)
-
-        # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, args)
-        print("Accuracy:", str(acc1))
-
+        train(val_loader, model, criterion, optimizer, epoch, device, args, step_history)
         scheduler.step()
 
-    state_dict = tp.state_dict(model)  # the pruned model
-    torch.save(state_dict, "exp_2_model_resnet50_prune_"+str(args.prune)+"_single_epochs_"+args.epochs+"_pruned.pth")
+    print("=> evaluate rebuilt and tuned model")
+    validate(val_loader, model, criterion, args)
+    torch.save(tp.state_dict(model), "exp_3_model_resnet18_rebuilt_0.3_tuned.pth")
 
     model_statistics = summary(model, (1, 3, 224, 224), depth=3,
-                               col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
-    model_statistics_str = str(model_statistics)
+                               col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"])
 
-    history = pruner.pruning_history()
-    layers_affected = len(history)
-    layers_affected_per_step = int(layers_affected / iterative_steps)
-    step_history = [history[i:i + layers_affected_per_step] for i in
-                    range(0, layers_affected, layers_affected_per_step)]
-    import pickle
-    with open(str(args.prune) + '_history_exp2', 'wb') as temp:
-        pickle.dump(step_history, temp)
+def get_module_by_name(model, access_string):
+    names = access_string.split(sep='.')
+    return reduce(getattr, names, model)
 
-
-def train(train_loader, model, criterion, optimizer, epoch, device, args):
+def train(train_loader, model, criterion, optimizer, epoch, device, args, step_history):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -376,19 +439,61 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
         top1.update(acc1[0], images.size(0))
         top5.update(acc5[0], images.size(0))
 
-
-        # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
-        # loss.grad
-        
-        # # prevent channels from updating
-        # for param in model.get_parameter():
-        #     param.grad[:, 1:10, :, :] = 0
 
-        optimizer.state_dict()
-
+        temp_model = copy.deepcopy(model)
         optimizer.step()
+
+        # for i, param in enumerate(optimizer.param_groups[0]['params']):
+        #     print(i, param.grad.shape)
+        #     param.grad = torch.zeros_like(param.grad)
+        #     gradients update don't work due to momentum
+        # loop through each layer changed in pruning
+        for pruned_layer_name, b, channels_removed in reversed(step_history):
+            # loop through the layers of the larger model (same number of layers, different channel width)
+            for layer_name, tuning_params in model.named_parameters():
+
+                skipped = 0
+
+                if (layer_name == pruned_layer_name + ".weight"):
+
+                    temp_layer = get_module_by_name(temp_model, pruned_layer_name)
+                    bigger_layer = get_module_by_name(model, pruned_layer_name)
+
+                    # loop throught the channels of the bigger model
+                    for idx in range(bigger_layer.out_channels):
+
+                        # check if the channel has been dropped
+                        if idx in channels_removed:
+                            # if channel was dropped, do not copy weights, use updated weights
+
+                            skipped += 1
+
+                        else:
+
+                            # the non pruned channels are not updated, and copied back from the temp weights before weight updates
+                            if "layer" not in layer_name:
+
+                                tuning_params.requires_grad_(False)
+                                # the non pruned channels are not updated, and copied back from the temp weights
+                                #                         # before weight updates
+                                tuning_params[idx, :, :, :] = temp_layer.weight.data[idx - skipped, :, :, :]
+
+                            else:  # for conv layers with reshape of both input and output
+
+                                tuning_params.requires_grad_(False)
+                                skipped_j = 0
+
+                                if (bigger_layer.in_channels - temp_layer.in_channels) == len(channels_removed):
+
+                                    for idx_j in range(bigger_layer.in_channels):
+
+                                        if idx_j in channels_removed:
+                                            # if channel was dropped, do not copy weights from smaller tuned model
+                                            skipped_j += 1
+                                        else:
+                                            tuning_params[idx, idx_j, :, :] = temp_layer.weight.data[idx - skipped, idx_j - skipped_j, :, :]
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -396,7 +501,6 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
 
         if i % args.print_freq == 0:
             progress.display(i + 1)
-
 
 def validate(val_loader, model, criterion, args):
     def run_validate(loader, base_progress=0):
@@ -458,13 +562,11 @@ def validate(val_loader, model, criterion, args):
 
     return top1.avg
 
-
 class Summary(Enum):
     NONE = 0
     AVERAGE = 1
     SUM = 2
     COUNT = 3
-
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -518,7 +620,6 @@ class AverageMeter(object):
 
         return fmtstr.format(**self.__dict__)
 
-
 class ProgressMeter(object):
     def __init__(self, num_batches, meters, prefix=""):
         self.batch_fmtstr = self._get_batch_fmtstr(num_batches)
@@ -539,7 +640,6 @@ class ProgressMeter(object):
         num_digits = len(str(num_batches // 1))
         fmt = '{:' + str(num_digits) + 'd}'
         return '[' + fmt + '/' + fmt.format(num_batches) + ']'
-
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for the specified values of k"""
