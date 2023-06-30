@@ -6,7 +6,7 @@ Deep learning models for vision tasks are increasingly being deployed across mul
 
 ## Methodology
 Diagram of the steps taken to setup the adaptability of the models. Different colors indicate channel groups with different weight functions, explained in the legend.
-![My Image](methodology.jpg)
+![Method](methodology.jpg)
 
-[Read the paper:](draft.pdf)
+[Read the paper](draft.pdf)
 
