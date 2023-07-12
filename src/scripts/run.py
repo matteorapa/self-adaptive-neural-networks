@@ -1,15 +1,11 @@
 import argparse
 import os
-import random
 import shutil
 import time
-import warnings
 from enum import Enum
-from prune import *
 import torch
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
-import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
@@ -19,7 +15,6 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
-from torch.utils.data import Subset
 import torch_pruning as tp
 from torchinfo import summary
 

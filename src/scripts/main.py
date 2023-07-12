@@ -1,13 +1,10 @@
 import torch.backends.cudnn as cudnn
 import torchvision.transforms as transforms
-import torch.multiprocessing as mp
-import torch
 import argparse
 
 # import local libraries
-from prune import *
 from metrics import *
-from paths import *
+
 
 def switch(model):
     if model == "resnet50":

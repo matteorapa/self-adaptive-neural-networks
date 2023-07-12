@@ -2,13 +2,40 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af09428b-1b75-4ff0-94af-89eaa01d575a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/notebooks/_history" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/experiment_4.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_0.125.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_0.25_rebuilt_v6.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_0.25_rebuilt_v7.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_server_rebuilt.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_server_rebuilt_conv.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_step_0.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_step_1.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/0.125_history_exp2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/0.25_history_exp2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/0.5_history_exp2" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.125_single_epochs_10_epoch0pruned.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.125_single_epochs_10_epoch9pruned.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.25_single_epochs_10_epoch0pruned.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.25_single_epochs_10_epoch9pruned.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.5_single_epochs_10_epoch0pruned.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.5_single_epochs_10_epoch8pruned.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/pl.ipynb" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/resnet50-19c8e357.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/resnet50.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/resnet50_pruned_0.25.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/notebooks/resnet50_pruned_server.onnx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/experiment_5.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/finetune_freeze.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/rebuild.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/checkpoints/exp_3_model_resnet18_pruned_0.3_tuned.pth" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/exp_3_model_resnet18_pruned_0.3_tuned.pth" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/notebooks/channel-freeze.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/channel-freeze.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/freeze-test.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/freeze-test.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/init.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/init.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/experiment_3.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiment_3.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiment_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiment_2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiment_4.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiment_4.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/scripts/example.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/scripts/example.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/scripts/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/scripts/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/scripts/prune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/prune.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/scripts/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/scripts/run.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,12 +75,13 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\35679\Documents\GitHub\msc-thesis-self-adaptive-neural-networks\src" />
+      <recent name="C:\Users\35679\Documents\GitHub\msc-thesis-self-adaptive-neural-networks\checkpoints\onnx" />
       <recent name="C:\Users\35679\Documents\GitHub\msc-thesis-self-adaptive-neural-networks\results" />
       <recent name="C:\Users\35679\Documents\GitHub\msc-thesis-self-adaptive-neural-networks\data\train" />
-      <recent name="C:\Users\35679\Documents\GitHub\msc-thesis-self-adaptive-neural-networks\src" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.experiment_4">
+  <component name="RunManager" selected="Python.experiment_2">
     <configuration name="example" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="msc-thesis-self-adaptive-neural-networks" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -67,6 +95,27 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/example.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="experiment_2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="msc-thesis-self-adaptive-neural-networks" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/experiment_2.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -96,6 +145,27 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="experiment_5" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="msc-thesis-self-adaptive-neural-networks" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/experiment_5.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="msc-thesis-self-adaptive-neural-networks" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -109,27 +179,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="new" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="msc-thesis-self-adaptive-neural-networks" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/new.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -159,34 +208,13 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="run" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="msc-thesis-self-adaptive-neural-networks" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/run.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.experiment_2" />
+        <item itemvalue="Python.experiment_5" />
         <item itemvalue="Python.experiment_4" />
         <item itemvalue="Python.original" />
         <item itemvalue="Python.example" />
-        <item itemvalue="Python.run" />
-        <item itemvalue="Python.new" />
       </list>
     </recent_temporary>
   </component>
@@ -208,29 +236,9 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/main.py</url>
-          <line>17</line>
-          <option name="timeStamp" value="15" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$USER_HOME$/anaconda3/Lib/site-packages/torch_pruning/pruner/algorithms/metapruner.py</url>
           <line>278</line>
           <option name="timeStamp" value="34" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/run.py</url>
-          <line>229</line>
-          <option name="timeStamp" value="42" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/run.py</url>
-          <line>234</line>
-          <option name="timeStamp" value="43" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/run.py</url>
-          <line>235</line>
-          <option name="timeStamp" value="44" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/experiment_3.py</url>
@@ -266,6 +274,21 @@
           <url>file://$PROJECT_DIR$/src/experiment_3.py</url>
           <line>315</line>
           <option name="timeStamp" value="88" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/experiment_4.py</url>
+          <line>277</line>
+          <option name="timeStamp" value="90" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/experiment_5.py</url>
+          <line>253</line>
+          <option name="timeStamp" value="121" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/experiment_2.py</url>
+          <line>328</line>
+          <option name="timeStamp" value="122" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>

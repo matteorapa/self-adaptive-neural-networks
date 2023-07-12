@@ -22,6 +22,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Subset
 import torch_pruning as tp
 from torchinfo import summary
+from torchvision.models import ResNet50_Weights, resnet50
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -30,7 +31,7 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR', nargs='?', default='../data',
                     help='path to dataset (default: imagenet)')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                          ' | '.join(model_names) +
@@ -41,7 +42,7 @@ parser.add_argument('--epochs', default=20, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=512, type=int,
+parser.add_argument('-b', '--batch-size', default=16, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -142,7 +143,8 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
 
     print("=> using pre-trained model '{}'".format(args.arch))
-    model = models.__dict__[args.arch](pretrained=True)
+    # model = models.__dict__[args.arch](pretrained=True)
+    model = resnet50(weights=ResNet50_Weights)
 
     if not torch.cuda.is_available() and not torch.backends.mps.is_available():
         print('using CPU, this will be slow')
@@ -278,7 +280,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     iterative_steps = 1  # progressive pruning
     current_step = 1
-    sparsity = args.prune
+    sparsity = 0.125
 
     pruner = tp.pruner.MagnitudePruner(
         model,
@@ -317,18 +319,22 @@ def main_worker(gpu, ngpus_per_node, args):
                     range(0, layers_affected, layers_affected_per_step)]
 
     import pickle
-    with open(str(args.prune) + '_history_exp2', 'wb') as temp:
+    with open('history_exp2_125_july', 'wb') as temp:
         pickle.dump(step_history, temp)
+
+    state_dict = tp.state_dict(model)  # the pruned model
+    torch.save(state_dict,
+               "exp_2_model_resnet50_pruned_125_july.pth")
 
     validate(val_loader, model, criterion, args)
 
     print("Starting fine-tuning...")
-    for epoch in range(0, args.epochs):
+    for epoch in range(0, 1):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, device, args)
+        train(val_loader, model, criterion, optimizer, epoch, device, args)
 
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, args)

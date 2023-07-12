@@ -1,11 +1,9 @@
 import argparse
-import os
 import random
 import shutil
 import time
 import warnings
 from enum import Enum
-from prune import *
 
 import torch
 import torch.backends.cudnn as cudnn

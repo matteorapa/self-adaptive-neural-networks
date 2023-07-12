@@ -9,6 +9,7 @@ import copy
 from functools import reduce
 import pickle
 
+from torchvision.models import ResNet50_Weights
 import torch
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
@@ -25,6 +26,7 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Subset
 import torch_pruning as tp
 from torchinfo import summary
+from torchvision.models import resnet50
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -33,7 +35,7 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR', nargs='?', default='../data',
                     help='path to dataset (default: imagenet)')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                          ' | '.join(model_names) +
@@ -49,7 +51,7 @@ parser.add_argument('-b', '--batch-size', default=16, type=int,
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--lr', '--learning-rate', default=0.05, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
@@ -145,52 +147,9 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
 
     print("=> using pre-trained model '{}'".format(args.arch))
-    model = models.__dict__[args.arch](pretrained=True)
-
-    if not torch.cuda.is_available() and not torch.backends.mps.is_available():
-        print('using CPU, this will be slow')
-    elif args.distributed:
-        # For multiprocessing distributed, DistributedDataParallel constructor
-        # should always set the single device scope, otherwise,
-        # DistributedDataParallel will use all available devices.
-        if torch.cuda.is_available():
-            if args.gpu is not None:
-                torch.cuda.set_device(args.gpu)
-                model.cuda(args.gpu)
-                # When using a single GPU per process and per
-                # DistributedDataParallel, we need to divide the batch size
-                # ourselves based on the total number of GPUs of the current node.
-                args.batch_size = int(args.batch_size / ngpus_per_node)
-                args.workers = int((args.workers + ngpus_per_node - 1) / ngpus_per_node)
-                model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-            else:
-                model.cuda()
-                # DistributedDataParallel will divide and allocate batch_size to all
-                # available GPUs if device_ids are not set
-                model = torch.nn.parallel.DistributedDataParallel(model)
-    elif args.gpu is not None and torch.cuda.is_available():
-        torch.cuda.set_device(args.gpu)
-        model = model.cuda(args.gpu)
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-        model = model.to(device)
-    else:
-        # DataParallel will divide and allocate batch_size to all available GPUs
-        if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
-            model.features = torch.nn.DataParallel(model.features)
-            model.cuda()
-        else:
-            model = torch.nn.DataParallel(model).cuda()
-
-    if torch.cuda.is_available():
-        if args.gpu:
-            device = torch.device('cuda:{}'.format(args.gpu))
-        else:
-            device = torch.device("cuda")
-    elif torch.backends.mps.is_available():
-        device = torch.device("mps")
-    else:
-        device = torch.device("cpu")
+    model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    device = torch.device("cuda:0")
+    model = model.to(device)
 
     traindir = os.path.join(args.data, 'train')
     valdir = os.path.join(args.data, 'val')
@@ -231,8 +190,6 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True, sampler=val_sampler)
 
     # validate(val_loader, model, criterion, args)
-
-    model.to(device)
     criterion = nn.CrossEntropyLoss().to(device)
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
@@ -245,78 +202,85 @@ def main_worker(gpu, ngpus_per_node, args):
         names = access_string.split(sep='.')
         return reduce(getattr, names, model)
 
-    def save_checkpoint(state, filepath, name):
-        torch.save(state, os.path.join(filepath, name+'checkpoint.pth'))
-
     # print("=> evaluate model before pruning")
     # validate(val_loader, model, criterion, args)
+    example_inputs = torch.randn(1, 3, 224, 224).to(device)
 
-    sparsity = 0.25
-    print("Pruning sparsity:", sparsity)
-    model.eval()
+    # 0. importance criterion for parameter selections
+    imp = tp.importance.MagnitudeImportance(p=2, group_reduction='mean')
 
-    # Importance criteria
-    example_inputs = torch.randn(1, 3, 224, 224)
-    imp = tp.importance.TaylorImportance()
-
+    # 1. ignore some layers that should not be pruned, e.g., the final classifier layer.
     ignored_layers = []
     for m in model.modules():
         if isinstance(m, torch.nn.Linear) and m.out_features == 1000:
-            ignored_layers.append(m)
+            ignored_layers.append(m)  # DO NOT prune the final classifier!
 
-    iterative_steps = 1
-
+    # 2. Pruner initialization
+    iterative_steps = 2  # You can prune your model to the target sparsity iteratively.
     pruner = tp.pruner.MagnitudePruner(
         model,
         example_inputs,
-        round_to=None,
-        unwrapped_parameters=None,
-        importance=imp,
-        iterative_steps=iterative_steps,
-        ch_sparsity = sparsity,
+        global_pruning=False,  # If False, a uniform sparsity will be assigned to different layers.
+        importance=imp,  # importance criterion for parameter selection
+        iterative_steps=iterative_steps,  # the number of iterations to achieve target sparsity
+        ch_sparsity=0.0625,  # remove 50% channels, ResNet18 = {64, 128, 256, 512} => ResNet18_Half = {32, 64, 128, 256}
         ignored_layers=ignored_layers,
     )
 
-
     base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
-
-    pruned_models = []
-    pruned_models.append(copy.deepcopy(model))
-    pruned_models[-1].to(device)
-
     for i in range(iterative_steps):
-        print("=> pruning model iteration", i)
-        if isinstance(imp, tp.importance.TaylorImportance):
-            loss = model(example_inputs).sum()
-            loss.backward()
+        # 3. the pruner.step will remove some channels from the model with least importance
         pruner.step()
-        pruned_models.append(copy.deepcopy(model))
-        pruned_models[-1].to(device)
 
+        # 4. Do whatever you like here, such as fine-tuning
         macs, nparams = tp.utils.count_ops_and_params(model, example_inputs)
+        print(model)
+        print(model(example_inputs).shape)
         print(
-                "  Iter %d/%d, Params: %.2f M => %.2f M"
-                % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
-            )
+            "  Iter %d/%d, Params: %.2f M => %.2f M"
+            % (i + 1, iterative_steps, base_nparams / 1e6, nparams / 1e6)
+        )
         print(
             "  Iter %d/%d, MACs: %.2f G => %.2f G"
             % (i + 1, iterative_steps, base_macs / 1e9, macs / 1e9)
         )
-    print("=> evaluate pruned model (No fine-tuning)")
-    validate(val_loader, pruned_models[0], criterion, args)
 
+        torch.onnx.export(model,
+                          example_inputs,
+                          "resnet50_pruned_step_"+str(i)+".onnx",
+                          verbose=False,
+                          input_names=["input"],
+                          output_names=["output"],
+                          export_params=True,
+                          )
+
+
+    # print(model)
+    # print("=> evaluate pruned model (No fine-tuning)")
+    # validate(val_loader, model, criterion, args, device)
+
+    torch.onnx.export(model,
+                      example_inputs,
+                      "resnet50_pruned_0.125.onnx",
+                      verbose=False,
+                      input_names=["input"],
+                      output_names=["output"],
+                      export_params=True,
+                      )
     print("=> starting fine-tuning of pruned model...")
     for epoch in range(0, 1):
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
-        train(val_loader, pruned_models[1], criterion, optimizer, epoch, device, args, step_history=None)
+        train(val_loader, model, criterion, optimizer, epoch, device, args, step_history=None)
         scheduler.step()
 
     print("=> evaluate pruned and tuned model")
     # validate model after pruning and tuning
-    validate(val_loader, pruned_models[0], criterion, args)
-    torch.save(tp.state_dict(pruned_models[0]),"exp_3_model_resnet18_pruned_0.3_tuned.pth")
+
+    validate(val_loader, model, criterion, args)
+    state_dict = tp.state_dict(model)  # the pruned model, e.g., a resnet-18-half
+    torch.save(state_dict, 'resnet50_pruned_tuned_0125.pth')
 
     # model = torch.load('exp_3_model_resnet18_pruned_0.3_tuned.pth')
 
@@ -325,15 +289,16 @@ def main_worker(gpu, ngpus_per_node, args):
     layers_affected = len(history)
     layers_affected_per_step = int(layers_affected / iterative_steps)
     step_history = [history[i:i+layers_affected_per_step] for i in range(0, layers_affected, layers_affected_per_step)]
-    pruned_models.reverse() # 60, 61, 62, 63, 64
-    with open('0.3_history_exp3', 'wb') as data:
+
+    with open('0.125_history_exp4', 'wb') as data:
         pickle.dump(step_history, data)
 
     print("=> rebuild pruned and tuned model to original size")
+    tuned_model = model
+    bigger_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+
 
     for i, history in enumerate(reversed(step_history)):
-        tuned_model = pruned_models[i]
-        bigger_model = pruned_models[i+1]
 
         # loop through each layer changed in pruning
         for pruned_layer_name, b, channels_removed in reversed(history):
@@ -381,8 +346,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # validate model after rebuilding, degraded accuracy expected
     print("=> evaluate rebuilt model (no fine-tuning)")
-    validate(val_loader, pruned_models[1], criterion, args)
-    torch.save(tp.state_dict(pruned_models[0]), "exp_3_model_resnet18_rebuilt_0.3.pth")
+    validate(val_loader, model, criterion, args)
+    torch.save(tp.state_dict(bigger_model), "exp_3_model_resnet50_rebuilt_0.125.pth")
 
     # create a new model, e.g. resnet18
     # model = models.__dict__[args.arch](pretrained=True)
@@ -514,19 +479,14 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args, step_h
         if i % args.print_freq == 0:
             progress.display(i + 1)
 
-def validate(val_loader, model, criterion, args):
+def validate(val_loader, model, criterion, args, device):
     def run_validate(loader, base_progress=0):
         with torch.no_grad():
             end = time.time()
             for i, (images, target) in enumerate(loader):
                 i = base_progress + i
-                if args.gpu is not None and torch.cuda.is_available():
-                    images = images.cuda(args.gpu, non_blocking=True)
-                if torch.backends.mps.is_available():
-                    images = images.to('mps')
-                    target = target.to('mps')
-                if torch.cuda.is_available():
-                    target = target.cuda(args.gpu, non_blocking=True)
+                images = images.to(device, non_blocking=True)
+                target = target.to(device, non_blocking=True)
 
                 # compute output
                 output = model(images)
