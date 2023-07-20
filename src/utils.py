@@ -43,26 +43,42 @@ def save_onnx(model, filename, device):
 def load_model(path, pruned=False):
     if pruned:
         model = resnet50()
-        state = torch.load('../checkpoints/'+path, map_location='cpu')
+        state = torch.load('../checkpoints/'+path+".pth", map_location='cpu')
         tp.load_state_dict(model, state_dict=state)
         return model
+    else:
+        model = resnet50()
+        model.load_state_dict(torch.load('../checkpoints/'+path+".pth"))
 
 
 def save_model(model, filename, pruned=False):
     if pruned:
         state_dict = tp.state_dict(model)  # the pruned model
-        torch.save(state_dict, '../checkpoints/'+filename)
+        torch.save(state_dict, '../checkpoints/'+filename+".pth")
+    else:
+        torch.save(model.state_dict(), '../checkpoints/'+filename+".pth")
 
 
-def load_history(path):
-    with open('../checkpoints/history/'+path, 'rb') as file:
+def load_out_history(path):
+    with open('../checkpoints/history/out_'+path, 'rb') as file:
         history_steps = pickle.load(file)
     return history_steps
 
 
-def save_history(history_steps, filename):
-    with open('../checkpoints/history/'+filename, 'wb') as temp:
+def load_in_history(filename):
+    with open('../checkpoints/history/in_'+filename+'.pkl', 'rb') as f:
+        loaded_dict = pickle.load(f)
+    return loaded_dict
+
+
+def save_out_history(history_steps, filename):
+    with open('../checkpoints/history/out_'+filename, 'wb') as temp:
         pickle.dump(history_steps, temp)
+
+
+def save_in_history(d, filename):
+    with open('../checkpoints/history/in_'+filename+'.pkl', 'wb') as f:
+        pickle.dump(d, f)
 
 
 def get_module_by_name(model, access_string):
@@ -169,6 +185,88 @@ def validate(val_loader, model, criterion, args, device):
     progress.display_summary()
 
     return top1.avg
+
+# Function taken from https://discuss.pytorch.org/t/check-if-models-have-same-weights/4351
+def compareModelWeights(model_a, model_b):
+    module_a = model_a._modules
+    module_b = model_b._modules
+    if len(list(module_a.keys())) != len(list(module_b.keys())):
+        return False
+    a_modules_names = list(module_a.keys())
+    b_modules_names = list(module_b.keys())
+    for i in range(len(a_modules_names)):
+        layer_name_a = a_modules_names[i]
+        layer_name_b = b_modules_names[i]
+        if layer_name_a != layer_name_b:
+            return False
+        layer_a = module_a[layer_name_a]
+        layer_b = module_b[layer_name_b]
+        if (
+            (type(layer_a) == nn.Module) or (type(layer_b) == nn.Module) or
+            (type(layer_a) == nn.Sequential) or (type(layer_b) == nn.Sequential)
+            ):
+            if not compareModelWeights(layer_a, layer_b):
+                return False
+        if hasattr(layer_a, 'weight') and hasattr(layer_b, 'weight'):
+            if not torch.equal(layer_a.weight.data, layer_b.weight.data):
+                return False
+    return True
+
+
+# def get_layers(model: torch.nn.Module):
+#     children = list(model.children())
+#     return [model] if len(children) == 0 else [ci for c in children for ci in get_layers(c)]
+
+def get_layers(model: torch.nn.Module, parent_name=''):
+    layers = {}
+    for name, module in model.named_children():
+        layer_name = f"{parent_name}.{name}" if parent_name else name
+        if len(list(module.children())) == 0:
+            layers[layer_name] = module
+        else:
+            layers.update(get_layers(module, parent_name=layer_name))
+    return layers
+
+def show_layers(model: torch.nn.Module):
+    layers = get_layers(model)
+    for i, (name, module) in enumerate(layers.items()):
+        if hasattr(module, 'weight'):
+            print( name, module)
+
+def compare_models(model_a, model_b):
+    layers_a = get_layers(model=model_a)
+    layers_b = get_layers(model=model_b)
+    i = 1
+    layer_count = len(layers_a)
+    if (len(layers_a) == len(layers_b)):
+        print("Same layer count")
+
+    for i, (name, module) in enumerate(layers_a.items()):
+        if hasattr(module, 'weight'):
+            # print(str(i), "of", str(layer_count), "Pass:", name, module)
+            if not torch.equal(module.weight.data, layers_b[name].weight.data):
+                print(str(i), "of", str(layer_count), "Fail:", name, module)
+        i += 1
+
+# def compare_models(model_a, model_b):
+#     layers_a = get_layers(model=model_a)
+#     layers_b = get_layers(model=model_b)
+#
+#     layer_count = len(layers_a)
+#     i = 1
+#
+#     if (len(layers_a) == len(layers_b)):
+#         print("Same layer count")
+#
+#     for idx in range(layer_count):
+#         if hasattr(layers_a[idx], 'weight'):
+#             if torch.equal(layers_a[idx].weight.data, layers_b[idx].weight.data):
+#                 print(str(i), "of", str(layer_count), "Pass:", layers_a[idx])
+#             else:
+#                 print(str(i), "of", str(layer_count), "Fail:", layers_a[idx])
+#         else:
+#             print(str(i), "of", str(layer_count), "No weights", layers_a[idx])
+#         i += 1
 
 class Summary(Enum):
     NONE = 0

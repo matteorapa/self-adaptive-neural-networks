@@ -2,40 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af09428b-1b75-4ff0-94af-89eaa01d575a" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_0.125.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_0.25_rebuilt_v6.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_0.25_rebuilt_v7.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_server_rebuilt.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_server_rebuilt_conv.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_step_0.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_pruned_step_1.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/0.125_history_exp2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/0.25_history_exp2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/0.5_history_exp2" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.125_single_epochs_10_epoch0pruned.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.125_single_epochs_10_epoch9pruned.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.25_single_epochs_10_epoch0pruned.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.25_single_epochs_10_epoch9pruned.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.5_single_epochs_10_epoch0pruned.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/exp_2_model_resnet50_prune_0.5_single_epochs_10_epoch8pruned.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/pl.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/resnet50-19c8e357.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/resnet50.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/resnet50_pruned_0.25.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notebooks/resnet50_pruned_server.onnx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/experiment_5.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/finetune_freeze.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/rebuild.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/checkpoints/exp_3_model_resnet18_pruned_0.3_tuned.pth" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/exp_3_model_resnet18_pruned_0.3_tuned.pth" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/notebooks/channel-freeze.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/notebooks/channel-freeze.ipynb" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/experiment_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiment_2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/experiment_4.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiment_4.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/scripts/example.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/scripts/example.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/scripts/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/scripts/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/scripts/prune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/prune.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/scripts/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/scripts/run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/experiment_5.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiment_5.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -81,7 +49,7 @@
       <recent name="C:\Users\35679\Documents\GitHub\msc-thesis-self-adaptive-neural-networks\data\train" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.experiment_2">
+  <component name="RunManager" selected="Python.experiment_5">
     <configuration name="example" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="msc-thesis-self-adaptive-neural-networks" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -210,8 +178,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.experiment_2" />
         <item itemvalue="Python.experiment_5" />
+        <item itemvalue="Python.experiment_2" />
         <item itemvalue="Python.experiment_4" />
         <item itemvalue="Python.original" />
         <item itemvalue="Python.example" />
@@ -279,11 +247,6 @@
           <url>file://$PROJECT_DIR$/src/experiment_4.py</url>
           <line>277</line>
           <option name="timeStamp" value="90" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/experiment_5.py</url>
-          <line>253</line>
-          <option name="timeStamp" value="121" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/experiment_2.py</url>

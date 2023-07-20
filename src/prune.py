@@ -27,10 +27,9 @@ def apply_prune(model: ResNet, prune_amount: int) -> ResNet:
     return model
 
 
-def apply_channel_prune(model, sparsity):
-
+def apply_channel_prune(model, sparsity, example_inputs):
+        print("=> Applying pruning: '{}'".format(sparsity))
         # Importance criteria
-        example_inputs = torch.randn(1, 3, 224, 224)
         imp = tp.importance.TaylorImportance()
 
         ignored_layers = []
@@ -38,7 +37,7 @@ def apply_channel_prune(model, sparsity):
             if isinstance(m, torch.nn.Linear) and m.out_features == 1000:
                 ignored_layers.append(m)  # DO NOT prune the final classifier!
 
-        iterative_steps = 5  # progressive pruning
+        iterative_steps = 1  # progressive pruning
         current_step = 1
         prune_amounts = [x / 64 for x in range(48)]
 
@@ -53,7 +52,6 @@ def apply_channel_prune(model, sparsity):
 
         base_macs, base_nparams = tp.utils.count_ops_and_params(model, example_inputs)
 
-        print("Pruning sparsity:", sparsity, )
         for i in range(iterative_steps):
             if isinstance(imp, tp.importance.TaylorImportance):
                 # Taylor expansion requires gradients for importance estimation
@@ -73,9 +71,9 @@ def apply_channel_prune(model, sparsity):
             )
 
 
-        model_statistics = summary(model, (1, 3, 224, 224), depth=3,
-                                   col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
-        model_statistics_str = str(model_statistics)
+        # model_statistics = summary(model, (1, 3, 224, 224), depth=3,
+        #                            col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
+        # model_statistics_str = str(model_statistics)
 
         history = pruner.pruning_history()
         layers_affected = len(history)
