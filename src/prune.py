@@ -27,7 +27,7 @@ def apply_prune(model: ResNet, prune_amount: int) -> ResNet:
     return model
 
 
-def apply_channel_prune(model, sparsity, example_inputs):
+def apply_channel_prune(model, original_model, sparsity, example_inputs):
         print("=> Applying pruning: '{}'".format(sparsity))
         # Importance criteria
         imp = tp.importance.TaylorImportance()
@@ -71,17 +71,20 @@ def apply_channel_prune(model, sparsity, example_inputs):
             )
 
 
-        # model_statistics = summary(model, (1, 3, 224, 224), depth=3,
-        #                            col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
-        # model_statistics_str = str(model_statistics)
+        model_statistics = summary(model, (1, 3, 224, 224), depth=3,
+                                   col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
+        model_statistics_str = str(model_statistics)
 
         history = pruner.pruning_history()
         layers_affected = len(history)
         layers_affected_per_step = int(layers_affected / iterative_steps)
-        step_history = [history[i:i + layers_affected_per_step] for i in
+        out_history = [history[i:i + layers_affected_per_step] for i in
                         range(0, layers_affected, layers_affected_per_step)]
 
-        return model, step_history
+        in_history_dict = {}
+        in_history_dict = get_in_channel_history(original_model, model, out_history)
+
+        return model, out_history, in_history_dict
 
 
 

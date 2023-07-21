@@ -10,7 +10,7 @@ import os
 import random
 import warnings
 import pickle
-from torchvision.models import ResNet50_Weights
+from torchvision.models import ResNet50_Weights, ResNet18_Weights, resnet18, resnet50
 import torch.backends.cudnn as cudnn
 import torch.multiprocessing as mp
 import torch.nn as nn
@@ -24,7 +24,8 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 import torch_pruning as tp
 from torchinfo import summary
-from torchvision.models import resnet50
+
+# Code bases on pytorch's imagenet example: https://github.com/pytorch/examples/tree/main/imagenet
 
 
 def save_onnx(model, filename, device):
@@ -121,9 +122,8 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
 
         optimizer.zero_grad()
         loss.backward()
-
-        temp_model = copy.deepcopy(model)
         optimizer.step()
+
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
@@ -186,37 +186,7 @@ def validate(val_loader, model, criterion, args, device):
 
     return top1.avg
 
-# Function taken from https://discuss.pytorch.org/t/check-if-models-have-same-weights/4351
-def compareModelWeights(model_a, model_b):
-    module_a = model_a._modules
-    module_b = model_b._modules
-    if len(list(module_a.keys())) != len(list(module_b.keys())):
-        return False
-    a_modules_names = list(module_a.keys())
-    b_modules_names = list(module_b.keys())
-    for i in range(len(a_modules_names)):
-        layer_name_a = a_modules_names[i]
-        layer_name_b = b_modules_names[i]
-        if layer_name_a != layer_name_b:
-            return False
-        layer_a = module_a[layer_name_a]
-        layer_b = module_b[layer_name_b]
-        if (
-            (type(layer_a) == nn.Module) or (type(layer_b) == nn.Module) or
-            (type(layer_a) == nn.Sequential) or (type(layer_b) == nn.Sequential)
-            ):
-            if not compareModelWeights(layer_a, layer_b):
-                return False
-        if hasattr(layer_a, 'weight') and hasattr(layer_b, 'weight'):
-            if not torch.equal(layer_a.weight.data, layer_b.weight.data):
-                return False
-    return True
-
-
-# def get_layers(model: torch.nn.Module):
-#     children = list(model.children())
-#     return [model] if len(children) == 0 else [ci for c in children for ci in get_layers(c)]
-
+# Function generated using chatGPT
 def get_layers(model: torch.nn.Module, parent_name=''):
     layers = {}
     for name, module in model.named_children():
@@ -243,30 +213,49 @@ def compare_models(model_a, model_b):
 
     for i, (name, module) in enumerate(layers_a.items()):
         if hasattr(module, 'weight'):
-            # print(str(i), "of", str(layer_count), "Pass:", name, module)
             if not torch.equal(module.weight.data, layers_b[name].weight.data):
                 print(str(i), "of", str(layer_count), "Fail:", name, module)
         i += 1
+def get_in_channel_history(original_model, pruned_model, step_history):
+    pruned_in_channels_history_dict = {}
+    print("=> Start history generation")
+    for i, history in enumerate(reversed(step_history)):
+        for pruned_layer_name, b, out_channels_removed in reversed(history):
+            print(pruned_layer_name)
+            pruned_layer = get_module_by_name(pruned_model, pruned_layer_name)
+            original_layer = get_module_by_name(original_model, pruned_layer_name)
+            in_history = get_index_in_channel_history(original_layer, pruned_layer, out_channels_removed)
+            pruned_in_channels_history_dict[pruned_layer_name] = in_history
+            print(in_history)
 
-# def compare_models(model_a, model_b):
-#     layers_a = get_layers(model=model_a)
-#     layers_b = get_layers(model=model_b)
-#
-#     layer_count = len(layers_a)
-#     i = 1
-#
-#     if (len(layers_a) == len(layers_b)):
-#         print("Same layer count")
-#
-#     for idx in range(layer_count):
-#         if hasattr(layers_a[idx], 'weight'):
-#             if torch.equal(layers_a[idx].weight.data, layers_b[idx].weight.data):
-#                 print(str(i), "of", str(layer_count), "Pass:", layers_a[idx])
-#             else:
-#                 print(str(i), "of", str(layer_count), "Fail:", layers_a[idx])
-#         else:
-#             print(str(i), "of", str(layer_count), "No weights", layers_a[idx])
-#         i += 1
+    return pruned_in_channels_history_dict
+def get_index_in_channel_history(original_layer, pruned_layer, pruned_out_channels):
+    skipped = 0  # adjustment to match out_channel between original and pruned model of different shapes
+    pruned_in_channels_history = []
+
+    for out_channel_idx in range(original_layer.out_channels):
+        not_pruned_in_channels = []  # in channels pruned per out channel
+        if out_channel_idx in pruned_out_channels:
+            # the out_channel is completely pruned
+            skipped += 1
+        else:
+            for in_channel_i in range(original_layer.in_channels):
+                # the out_channel is partially pruned, loop through the in channels
+                # and find which idx have been pruned for each non-pruned out channel
+                for in_channel_j in range(pruned_layer.in_channels):
+                    # the output channel exists in both pruned and original model
+                    if torch.equal(original_layer.weight.data[out_channel_idx, in_channel_i, :, :],
+                                   pruned_layer.weight.data[out_channel_idx - skipped, in_channel_j, :, :]):
+                        not_pruned_in_channels.append(in_channel_i)
+                        continue
+                        # in_channel_j of the pruned layer matches weights in the original layer, i.e not pruned
+
+        all_channels = list(range(original_layer.in_channels))
+        pruned_in_channels = [x for x in all_channels if x not in not_pruned_in_channels]
+        print(out_channel_idx, pruned_in_channels)
+        # pruned_in_channels_history.append([out_channel_idx, pruned_in_channels])
+        break  # the input channels dropped are the same for each output channel
+    return pruned_in_channels
 
 class Summary(Enum):
     NONE = 0

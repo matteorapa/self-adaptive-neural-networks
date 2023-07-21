@@ -1,113 +1,19 @@
 from utils import *
 
-def get_layer_in_channel_history(original_layer, pruned_layer, layer, pruned_out_channels):
-    skipped = 0  # adjustment to match out_channel between original and pruned model of different shapes
-    pruned_in_channels_history = []
-
-    for out_channel_idx in range(original_layer.out_channels):
-        not_pruned_in_channels = []  # in channels pruned per out channel
-        if out_channel_idx in pruned_out_channels:
-            # the out_channel is completely pruned
-            skipped += 1
-        else:
-            for in_channel_i in range(original_layer.in_channels):
-                # the out_channel is partially pruned, loop through the in channels
-                # and find which idx have been pruned for each non-pruned out channel
-                for in_channel_j in range(pruned_layer.in_channels):
-                    # the output channel exists in both pruned and original model
-                    if torch.equal(original_layer.weight.data[out_channel_idx, in_channel_i, :, :],
-                                   original_layer.weight.data[out_channel_idx - skipped, in_channel_j, :, :]):
-                        not_pruned_in_channels.append(in_channel_j)
-                        continue
-                        # in_channel_j of the pruned layer matches weights in the original layer, i.e not pruned
-
-        all_channels = list(range(original_layer.in_channels))
-        pruned_in_channels = [x for x in all_channels if x not in not_pruned_in_channels]
-        # pruned_in_channels_history.append([out_channel_idx, pruned_in_channels])
-        break  # the input channels dropped are the same for each output channel
-    return pruned_in_channels
-
-def get_index_in_channel_history(original_layer, pruned_layer, pruned_out_channels):
-    skipped = 0  # adjustment to match out_channel between original and pruned model of different shapes
-    pruned_in_channels_history = []
-    print(pruned_layer)
-
-    for out_channel_idx in range(original_layer.out_channels):
-        not_pruned_in_channels = []  # in channels pruned per out channel
-        if out_channel_idx in pruned_out_channels:
-            # the out_channel is completely pruned
-            skipped += 1
-        else:
-            for in_channel_i in range(original_layer.in_channels):
-                # the out_channel is partially pruned, loop through the in channels
-                # and find which idx have been pruned for each non-pruned out channel
-                for in_channel_j in range(pruned_layer.in_channels):
-                    # the output channel exists in both pruned and original model
-                    if torch.equal(original_layer.weight.data[out_channel_idx, in_channel_i, :, :],
-                                   pruned_layer.weight.data[out_channel_idx - skipped, in_channel_j, :, :]):
-                        not_pruned_in_channels.append(in_channel_i)
-                        continue
-                        # in_channel_j of the pruned layer matches weights in the original layer, i.e not pruned
-
-        all_channels = list(range(original_layer.in_channels))
-        pruned_in_channels = [x for x in all_channels if x not in not_pruned_in_channels]
-        print(out_channel_idx, pruned_in_channels)
-        # pruned_in_channels_history.append([out_channel_idx, pruned_in_channels])
-        break  # the input channels dropped are the same for each output channel
-    return pruned_in_channels
-
-def get_in_channel_history(original_model, pruned_model, step_history):
-    pruned_in_channels_history_dict = {}
-    for i, history in enumerate(reversed(step_history)):
-        for pruned_layer_name, b, out_channels_removed in reversed(history):
-            pruned_layer = get_module_by_name(pruned_model, pruned_layer_name)
-            original_layer = get_module_by_name(original_model, pruned_layer_name)
-            skipped = 0  # adjustment to match out_channel between original and pruned model of different shapes
-
-
-            for out_channel_idx in range(original_layer.out_channels):
-                not_pruned_in_channels = []  # in channels pruned per out channel
-                if out_channel_idx in out_channels_removed:
-                    # the out_channel is completely pruned
-                    skipped += 1
-                else:
-                    for in_channel_i in range(original_layer.in_channels):
-                        # the out_channel is partially pruned, loop through the in channels
-                        # and find which idx have been pruned for each non-pruned out channel
-                        for in_channel_j in range(pruned_layer.in_channels):
-                            # the output channel exists in both pruned and original model
-                            if torch.equal(original_layer.weight.data[out_channel_idx, in_channel_i, :, :],
-                                           original_layer.weight.data[out_channel_idx - skipped, in_channel_j, :, :]):
-                                not_pruned_in_channels.append(in_channel_j)
-                                continue
-                                # in_channel_j of the pruned layer matches weights in the original layer, i.e not pruned
-
-                all_channels = list(range(original_layer.in_channels))
-                pruned_in_channels = [x for x in all_channels if x not in not_pruned_in_channels]
-                pruned_in_channels_history_dict[pruned_layer_name] = pruned_in_channels
-                print(pruned_layer_name, pruned_in_channels)
-                # pruned_in_channels_history.append([out_channel_idx, pruned_in_channels])
-                break  # the input channels dropped are the same for each output channel
-    return pruned_in_channels_history_dict
-
-def rebuild_model(tuned_model, bigger_model, device):
+def rebuild_model(tuned_model, bigger_model, verification_model, device, out_history, in_history):
     print("=> Starting rebuilding...")
     layers_total = 0
     layers_rebuilt_count = 0
 
-    out_step_history = load_out_history("resnet50_pruned_0.125")
-    in_channels_history = load_in_history("resnet50_pruned_0.125")
-
     tuned_model = tuned_model.to(device)
     bigger_model = bigger_model.to(device)
-    verification_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2).to(device)
     verification_layers = get_layers(verification_model)
 
-    for i, history in enumerate(reversed(out_step_history)):
+    for i, history in enumerate(reversed(out_history)):
         for pruned_layer_name, b, out_channels_removed in reversed(history):
             layers_total += 1
 
-    for i, history in enumerate(reversed(out_step_history)):
+    for i, history in enumerate(reversed(out_history)):
         # loop through each layer changed in pruning
 
         for pruned_layer_name, b, out_channels_removed in reversed(history):
@@ -123,10 +29,9 @@ def rebuild_model(tuned_model, bigger_model, device):
                     tuned_layer = get_module_by_name(tuned_model, pruned_layer_name)
                     bigger_layer = get_module_by_name(bigger_model, pruned_layer_name)
                     verification_layer = get_module_by_name(bigger_model, pruned_layer_name)
-                    # in_channels_removed = get_layer_in_channel_history(bigger_layer, tuned_layer, layer_name, out_channels_removed)
-                    in_channels_removed_old = in_channels_history[pruned_layer_name]
-                    in_channels_removed = get_index_in_channel_history(bigger_layer, tuned_layer, out_channels_removed)
 
+                    # in_channels_removed = get_index_in_channel_history(bigger_layer, tuned_layer, out_channels_removed)
+                    in_channels_removed = in_history[pruned_layer_name]
 
                     # loop throughout the channels of the bigger model
                     for out_channel_idx in range(bigger_layer.out_channels):
@@ -151,15 +56,7 @@ def rebuild_model(tuned_model, bigger_model, device):
                                         # if channel was dropped, do not copy weights from smaller tuned model
                                         skipped_in_channels += 1
                                     else:
-
-                                        bigger_layer_params.data[out_channel_idx, in_channel_idx, :, :] = \
-                                                tuned_layer.weight.data[out_channel_idx - skipped_out_channels, in_channel_idx - skipped_in_channels, :, :]
-
-                                # if torch.equal(bigger_layer_params.data[out_channel_idx, in_channel_idx, :, :],
-                                #        verification_layer.weight.data[out_channel_idx, in_channel_idx, :, :]):
-                                #     print("Pass:", pruned_layer_name, out_channel_idx)
-                                # else:
-                                #     print("Fail:", pruned_layer_name, out_channel_idx)
+                                        bigger_layer_params.data[out_channel_idx, in_channel_idx, :, :] = tuned_layer.weight.data[out_channel_idx - skipped_out_channels, in_channel_idx - skipped_in_channels, :, :]
 
                     if torch.equal(bigger_layer_params.data, verification_layers[pruned_layer_name].weight.data):
                         print("Pass:", pruned_layer_name, bigger_layer)

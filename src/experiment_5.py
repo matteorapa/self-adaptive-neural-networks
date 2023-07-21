@@ -153,83 +153,52 @@ def main_worker(gpu, ngpus_per_node, args):
         val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True, sampler=None)
 
-    # validate(val_loader, model, criterion, args)
     criterion = nn.CrossEntropyLoss().to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), args.lr,
-                                momentum=args.momentum,
+    optimizer = torch.optim.SGD(model.parameters(), 0.1,
+                                momentum=0.9,
                                 weight_decay=args.weight_decay)
 
     scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
 
-    # validate(val_loader, verification_model, criterion, args, device)
-    # pruned_model, history_steps = apply_channel_prune(model, 0.125, example_inputs)
-    #
-    in_channels_history_dict = get_in_channel_history(original_model, pruned_model, history_steps)
-    #
-    # # save model, out_channels, in_channels
-    # save_model(model, "resnet50_pruned_0.125", pruned=True)
-    # save_out_history(history_steps, "resnet50_pruned_0.125")
-    # save_in_history(in_channels_history_dict, "resnet50_pruned_0.125")
+    prune = 0.0625
+    pruned_model, out_history, in_history = apply_channel_prune(model, prune, example_inputs)
 
-    pruned_model = load_model("resnet50_pruned_0.125", pruned=True)
+    # save model, out_channels, in_channels
+    save_model(model, "resnet50_pruned_" + str(prune), pruned=True)
+    save_out_history(out_history, "resnet50_pruned_" + str(prune))
+    save_in_history(in_history, "resnet50_pruned_" + str(prune))
 
-    # model_statistics = summary(pruned_model, (1, 3, 224, 224), depth=3,
-    #                            col_names=["kernel_size", "input_size", "output_size", "num_params", "mult_adds"], )
-    # model_statistics_str = str(model_statistics)
+    # pruned_model = load_model("resnet50_pruned_0.125", pruned=True)
+    print("=> evaluate pruned model")
+    validate(val_loader, pruned_model, criterion, args, device)
 
     # finetune model
-    # tuned_model = train(train_loader, model, criterion, optimizer, 0, device, args)
-    # print("=> evaluate pruned model after tuning")
-    # validate(val_loader, tuned_model, criterion, args)
+    tuned_model = train(train_loader, model, criterion, optimizer, 0, device, args)
+    print("=> evaluate pruned model after tuning")
+    validate(val_loader, tuned_model, criterion, args, device)
 
-    show_layers(pruned_model)
-    compare_models(original_model, verification_model)
-    rebuilt_model = rebuild_model(pruned_model, original_model, device)
+    # show_layers(pruned_model)
+    # compare_models(original_model, verification_model)
+    rebuilt_model = rebuild_model(pruned_model, original_model, device, out_history, in_history)
     rebuilt_model = rebuilt_model.to(device)
-    compare_models(verification_model, rebuilt_model)
+    # compare_models(verification_model, rebuilt_model)
 
-    isSame = compareModelWeights(verification_model, rebuilt_model)
-    if isSame:
-        print("The models are the same!")
-    else:
-        print("The models not the same :(")
-
-    save_onnx(verification_model, "resnet50_verif", device)
     save_onnx(rebuilt_model, "resnet50_rebuilt", device)
-    save_model(rebuilt_model, "resnet50_rebuilt")
+    save_model(rebuilt_model, "resnet50_rebuilt_"+str(prune))
 
-    validate(val_loader, verification_model, criterion, args, device)
+    print("=> evaluate rebuilt model (no fine-tuning)")
     validate(val_loader, rebuilt_model, criterion, args, device)
 
+    print("=> Starting fine-tuning of rebuilt model (Only train tune pruned channels)...")
+    for epoch in range(0, 10):
 
-    # if torch.equal(tuned_model.conv1.weight.data[51, :, :, :], rebuilt_model.conv1.weight.data[58, :, :, :]):
-    #     print("values match")
-    #
-    # if torch.equal(test_model.conv1.weight.data[59, :, :, :], rebuilt_model.conv1.weight.data[59, :, :, :]):
-    #     print("values match for non updated idx 59")
+        tune(val_loader, rebuilt_model, criterion, optimizer, epoch, device, args, out_history, in_history) # todo add in history to this
+        scheduler.step()
+        print("=> evaluate rebuilt and tuned model")
+        validate(val_loader, rebuilt_model, criterion, args, device)
 
-
-
-    # # validate model after rebuilding, degraded accuracy expected
-    # print("=> evaluate rebuilt model (no fine-tuning)")
-    # validate(val_loader, rebuilt_model, criterion, args, device)
-    # torch.save(tp.state_dict(bigger_model), "exp_3_model_resnet50_rebuilt_0.125.pth")
-    #
-    #
-    # print("=> Starting fine-tuning of rebuilt model (Only train tune pruned channels)...")
-    # for epoch in range(0, 10):
-    #
-    #     tune(val_loader, rebuilt_model, criterion, optimizer, epoch, device, args, step_history)
-    #
-    #     scheduler.step()
-    #     print("=> evaluate rebuilt and tuned model")
-    #     validate(val_loader, rebuilt_model, criterion, args, device)
-
-    # torch.save(tp.state_dict(model), "exp_3_model_resnet18_rebuilt_0.3_tuned.pth")
-    #
-    # model_stats = summary(model, (1, 3, 224, 224), depth=3, col_names=["input_size", "output_size", "num_params", "mult_adds"])
-
+    save_model(rebuilt_model, "resnet50_rebuilt_" + str(prune))
 
 if __name__ == '__main__':
     main()

@@ -2,8 +2,19 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="af09428b-1b75-4ff0-94af-89eaa01d575a" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/checkpoints/history/in_resnet50_pruned_0.0625.pkl" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/history/out_resnet50_pruned_0.0625" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/resnet50_pruned_0.0625.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/checkpoints/resnet50_rebuilt_0.0625.pth" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/experiment_6.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/checkpoints/exp_2_model_resnet50_prune_0.125_single_epochs_10_epoch9pruned.pth" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/snellius_resnet50_prune_0.125_single_epochs_10_epoch9pruned.pth" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/checkpoints/onnx/resnet50_rebuilt.onnx" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/onnx/resnet50_rebuilt.onnx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/experiment_5.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/experiment_5.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/finetune_freeze.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/finetune_freeze.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/prune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/prune.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/rebuild.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/rebuild.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,28 +60,7 @@
       <recent name="C:\Users\35679\Documents\GitHub\msc-thesis-self-adaptive-neural-networks\data\train" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.experiment_5">
-    <configuration name="example" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="msc-thesis-self-adaptive-neural-networks" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/example.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
+  <component name="RunManager" selected="Python.experiment_6">
     <configuration name="experiment_2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="msc-thesis-self-adaptive-neural-networks" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -134,6 +124,27 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="experiment_6" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="msc-thesis-self-adaptive-neural-networks" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/experiment_6.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="main" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="msc-thesis-self-adaptive-neural-networks" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -178,11 +189,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.experiment_6" />
         <item itemvalue="Python.experiment_5" />
         <item itemvalue="Python.experiment_2" />
         <item itemvalue="Python.experiment_4" />
         <item itemvalue="Python.original" />
-        <item itemvalue="Python.example" />
       </list>
     </recent_temporary>
   </component>
@@ -252,6 +263,16 @@
           <url>file://$PROJECT_DIR$/src/experiment_2.py</url>
           <line>328</line>
           <option name="timeStamp" value="122" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/experiment_6.py</url>
+          <line>207</line>
+          <option name="timeStamp" value="134" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/experiment_6.py</url>
+          <line>197</line>
+          <option name="timeStamp" value="140" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
