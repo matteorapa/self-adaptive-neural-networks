@@ -159,51 +159,69 @@ def main_worker(gpu, ngpus_per_node, args):
 
     criterion = nn.CrossEntropyLoss().to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), 0.1,
+
+    print("=> evaluate model")
+    validate(val_loader, model, criterion, args, device)
+    prune = 0.05
+    pruned_model, out_history, in_history = apply_channel_prune(model, original_model, prune, example_inputs)
+
+    # # # save model, out_channels, in_channels
+    save_model(model, "resnet50_pruned_" + str(prune), pruned=True)
+    save_out_history(out_history, "resnet50_pruned_" + str(prune))
+    save_in_history(in_history, "resnet50_pruned_" + str(prune))
+
+    # pruned_model = load_model("resnet50_pruned_" + str(prune), pruned=True)
+    # out_history = load_out_history("resnet50_pruned_" + str(prune))
+    # in_history = load_in_history("resnet50_pruned_" + str(prune))
+
+    pruned_model = pruned_model.to(device)
+    tuned_model = deepcopy(pruned_model)
+    save_onnx(pruned_model, "resnet50_pruned" + str(prune), device)
+    # finetune model
+
+    optimizer = torch.optim.SGD(tuned_model.parameters(), 0.05,
                                 momentum=0.9,
                                 weight_decay=args.weight_decay)
 
     scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
 
-    print("=> evaluate model")
-    validate(val_loader, model, criterion, args, device)
-    prune = 0.0625
-    # pruned_model, out_history, in_history = apply_channel_prune(model, original_model, prune, example_inputs)
+    tuned_model.fc.requires_grad = False
+    for epoch in range(2):
+        train(val_loader, tuned_model, criterion, optimizer, epoch, device, args)
+        scheduler.step()
 
-    # # save model, out_channels, in_channels
-    # save_model(model, "resnet50_pruned_" + str(prune), pruned=True)
-    # save_out_history(out_history, "resnet50_pruned_" + str(prune))
-    # save_in_history(in_history, "resnet50_pruned_" + str(prune))
-
-    pruned_model = load_model("resnet50_pruned_" + str(prune), pruned=True)
-    out_history = load_out_history("resnet50_pruned_" + str(prune))
-    in_history = load_in_history("resnet50_pruned_" + str(prune))
-    pruned_model = pruned_model.to(device)
-
-    # in_history = get_in_channel_history(pruned_model, model, out_history)
+    save_model(tuned_model, "resnet50_tuned_" + str(prune), pruned=True)
 
 
+    # tuned_model = load_model("resnet50_tuned_" + str(prune), pruned=True)
+    tuned_model = tuned_model.to(device)
+    save_onnx(tuned_model, "resnet50_tuned_"+str(prune), device)
+
+    # print("=> evaluate pruned/tuned model")
+    # validate(val_loader, tuned_model, criterion, args, device)
+
+    compare_models(pruned_model, tuned_model)
     print("=> evaluate pruned model")
     validate(val_loader, pruned_model, criterion, args, device)
 
-    # finetune model
+    print("=> evaluate pruned/tuned model")
+    validate(val_loader, tuned_model, criterion, args, device)
 
-    for epoch in range(3):
-        train(val_loader, pruned_model, criterion, optimizer, epoch, device, args)
-        scheduler.step()
-
-    print("=> evaluate pruned model after tuning")
-    validate(val_loader, pruned_model, criterion, args, device)
-
-    rebuilt_model = rebuild_model(pruned_model, original_model, verification_model, device, out_history, in_history)
+    rebuilt_model = rebuild_model(tuned_model, original_model, verification_model, device, out_history, in_history)
     rebuilt_model = rebuilt_model.to(device)
     compare_models(verification_model, rebuilt_model)
 
-    save_onnx(rebuilt_model, "resnet50_rebuilt", device)
+    save_onnx(rebuilt_model, "resnet50_rebuilt" + str(prune), device)
     save_model(rebuilt_model, "resnet50_rebuilt_"+str(prune))
 
     print("=> evaluate rebuilt model (no fine-tuning)")
     validate(val_loader, rebuilt_model, criterion, args, device)
+
+    optimizer = torch.optim.SGD(rebuilt_model.parameters(), 0.05,
+                                momentum=0.9,
+                                weight_decay=args.weight_decay)
+
+    scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
 
     print("=> Starting fine-tuning of rebuilt model (Only train tune pruned channels)...")
     for epoch in range(0, 10):

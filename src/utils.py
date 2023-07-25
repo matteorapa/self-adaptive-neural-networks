@@ -24,6 +24,7 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 import torch_pruning as tp
 from torchinfo import summary
+from copy import copy, deepcopy
 
 # Code bases on pytorch's imagenet example: https://github.com/pytorch/examples/tree/main/imagenet
 
@@ -42,14 +43,14 @@ def save_onnx(model, filename, device):
 
 
 def load_model(path, pruned=False):
+    model = resnet18()
     if pruned:
-        model = resnet50()
         state = torch.load('../checkpoints/'+path+".pth", map_location='cpu')
         tp.load_state_dict(model, state_dict=state)
-        return model
+
     else:
-        model = resnet50()
         model.load_state_dict(torch.load('../checkpoints/'+path+".pth"))
+    return model
 
 
 def save_model(model, filename, pruned=False):
@@ -87,49 +88,63 @@ def get_module_by_name(model, access_string):
     return reduce(getattr, names, model)
 
 
-def train(train_loader, model, criterion, optimizer, epoch, device, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    data_time = AverageMeter('Data', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
-        prefix="Epoch: [{}]".format(epoch))
+def train(train_loader, model, epochs, device, args):
+    criterion = nn.CrossEntropyLoss().to(device)
+    optimizer = torch.optim.SGD(model.parameters(), 0.05,
+                                momentum=0.9,
+                                weight_decay=args.weight_decay)
 
-    # switch to train mode
-    model.train()
+    scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
+    # model.fc.requires_grad = False
 
-    end = time.time()
-    for i, (images, target) in enumerate(train_loader):
-        # measure data loading time
-        data_time.update(time.time() - end)
+    for epoch in range(epochs):
+        batch_time = AverageMeter('Time', ':6.3f')
+        data_time = AverageMeter('Data', ':6.3f')
+        losses = AverageMeter('Loss', ':.4e')
+        top1 = AverageMeter('Acc@1', ':6.2f')
+        top5 = AverageMeter('Acc@5', ':6.2f')
+        progress = ProgressMeter(
+            len(train_loader),
+            [batch_time, data_time, losses, top1, top5],
+            prefix="Epoch: [{}]".format(epoch))
 
-        # move data to the same device as model
-        images = images.to(device, non_blocking=True)
-        target = target.to(device, non_blocking=True)
+        # switch to train mode
+        model.train()
 
-        # compute output
-        output = model(images)
-        loss = criterion(output, target)
 
-        # measure accuracy and record loss
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
-        losses.update(loss.item(), images.size(0))
-        top1.update(acc1[0], images.size(0))
-        top5.update(acc5[0], images.size(0))
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        # measure elapsed time
-        batch_time.update(time.time() - end)
         end = time.time()
+        for i, (images, target) in enumerate(train_loader):
+            # measure data loading time
+            data_time.update(time.time() - end)
 
-        if i % args.print_freq == 0:
-            progress.display(i + 1)
+            # move data to the same device as model
+            images = images.to(device, non_blocking=True)
+            target = target.to(device, non_blocking=True)
+
+            # compute output
+            output = model(images)
+            loss = criterion(output, target)
+
+            # measure accuracy and record loss
+            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            losses.update(loss.item(), images.size(0))
+            top1.update(acc1[0], images.size(0))
+            top5.update(acc5[0], images.size(0))
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            if i % args.print_freq == 0:
+                progress.display(i + 1)
+        scheduler.step()
+
+
 
 def validate(val_loader, model, criterion, args, device):
     def run_validate(loader, base_progress=0):
@@ -213,8 +228,13 @@ def compare_models(model_a, model_b):
 
     for i, (name, module) in enumerate(layers_a.items()):
         if hasattr(module, 'weight'):
+            # print("Pruned:", module.weight.data)
+            # print("Tuned", layers_b[name].weight.data)
+            # break
             if not torch.equal(module.weight.data, layers_b[name].weight.data):
                 print(str(i), "of", str(layer_count), "Fail:", name, module)
+            else:
+                print(str(i), "of", str(layer_count), "Pass:", name, module)
         i += 1
 def get_in_channel_history(original_model, pruned_model, step_history):
     pruned_in_channels_history_dict = {}

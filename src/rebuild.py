@@ -9,6 +9,13 @@ def rebuild_model(tuned_model, bigger_model, verification_model, device, out_his
     bigger_model = bigger_model.to(device)
     verification_layers = get_layers(verification_model)
 
+    # for name, params in tuned_model.named_parameters():
+    #     # if name == "conv1.weight":
+    #     print(name)
+    #     new_tensor = torch.ones_like(params.data)
+    #     params.data = new_tensor
+
+    save_onnx(bigger_model, "before", device)
     for i, history in enumerate(reversed(out_history)):
         for pruned_layer_name, b, out_channels_removed in reversed(history):
             layers_total += 1
@@ -28,7 +35,7 @@ def rebuild_model(tuned_model, bigger_model, verification_model, device, out_his
                     # get copy of layers
                     tuned_layer = get_module_by_name(tuned_model, pruned_layer_name)
                     bigger_layer = get_module_by_name(bigger_model, pruned_layer_name)
-                    verification_layer = get_module_by_name(bigger_model, pruned_layer_name)
+                    verification_layer = get_module_by_name(verification_model, pruned_layer_name)
 
                     # in_channels_removed = get_index_in_channel_history(bigger_layer, tuned_layer, out_channels_removed)
                     in_channels_removed = in_history[pruned_layer_name]
@@ -56,14 +63,18 @@ def rebuild_model(tuned_model, bigger_model, verification_model, device, out_his
                                         # if channel was dropped, do not copy weights from smaller tuned model
                                         skipped_in_channels += 1
                                     else:
-                                        bigger_layer_params.data[out_channel_idx, in_channel_idx, :, :] = tuned_layer.weight.data[out_channel_idx - skipped_out_channels, in_channel_idx - skipped_in_channels, :, :]
+                                        bigger_layer_params.data[out_channel_idx, in_channel_idx, :, :] = \
+                                            tuned_layer.weight.data[out_channel_idx - skipped_out_channels, in_channel_idx - skipped_in_channels, :, :]
 
-                    if torch.equal(bigger_layer_params.data, verification_layers[pruned_layer_name].weight.data):
-                        print("Pass:", pruned_layer_name, bigger_layer)
-                    else:
-                        print("Fail:", pruned_layer_name, bigger_layer)
+
             layers_rebuilt_count += 1
             print("("+str(layers_rebuilt_count), "of", str(layers_total)+")", pruned_layer_name, "has been rebuilt.")
+            if torch.equal(bigger_layer_params.data,tuned_layer.weight.data):
+                print("Same:", pruned_layer_name, bigger_layer)
+            else:
+                print("Different:", pruned_layer_name, bigger_layer)
+
+            save_onnx(bigger_model, "after", device)
 
     return bigger_model
 
