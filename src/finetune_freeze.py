@@ -44,7 +44,7 @@ def tune(train_loader, model, criterion, out_history, in_history, device, args):
             optimizer.zero_grad()
             loss.backward()
 
-            temp_model = copy.deepcopy(model)
+            temp_model = deepcopy(model)
             optimizer.step()
 
             for i, history in enumerate(reversed(out_history)):

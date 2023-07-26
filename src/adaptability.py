@@ -108,14 +108,15 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> using pre-trained model '{}'".format(args.arch))
     model_str = "resnet18"
 
-    model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-    verification_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
-    original_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    # model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    # verification_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    # original_model = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    #
+    # if model_str == "resnet18":
 
-    if model_str == "resnet18":
-        model = resnet18(weights=ResNet18_Weights)
-        verification_model = resnet18(weights=ResNet18_Weights)
-        original_model = resnet18(weights=ResNet18_Weights)
+    model = resnet18(weights=ResNet18_Weights)
+    verification_model = resnet18(weights=ResNet18_Weights)
+    original_model = resnet18(weights=ResNet18_Weights)
 
     device = torch.device("cuda:0")
     example_inputs = torch.randn(1, 3, 224, 224).to(device)
@@ -170,8 +171,8 @@ def main_worker(gpu, ngpus_per_node, args):
     save_out_history(out_history, model_str+"_pruned_" + str(prune))
     save_in_history(in_history, model_str+"_pruned_" + str(prune))
 
-    print("=> evaluate pruned model 01")
-    validate(val_loader, pruned_model_01, criterion, args, device)
+    # print("=> evaluate pruned model 01")
+    # validate(val_loader, pruned_model_01, criterion, args, device)
 
     pruned_model, out_history_02, in_history_02 = apply_channel_prune(pruned_model, pruned_model_01, prune_02, example_inputs)
     pruned_model_02 = deepcopy(pruned_model)
@@ -182,12 +183,22 @@ def main_worker(gpu, ngpus_per_node, args):
     save_out_history(out_history_02, model_str+"_pruned_" + str(prune) + "+" + str(prune_02))
     save_in_history(in_history_02, model_str+"_pruned_" + str(prune) + "+" + str(prune_02))
 
-    print("=> evaluate pruned model 02")
-    validate(val_loader, pruned_model_02, criterion, args, device)
+    # print("=> evaluate pruned model 02")
+    # validate(val_loader, pruned_model_02, criterion, args, device)
 
     # finetune model
     tuned_model = deepcopy(pruned_model_02)
-    train(val_loader, tuned_model, criterion, 2, device, args)
+
+    criterion = nn.CrossEntropyLoss().to(device)
+    optimizer = torch.optim.SGD(model.parameters(), 0.1,
+                                momentum=0.9,
+                                weight_decay=args.weight_decay)
+
+    scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
+    for epoch in range(1):
+        train(val_loader, tuned_model, 1, device, args, optimizer, criterion)
+        scheduler.step()
+
     save_model(tuned_model, model_str+"_tuned_" + str(prune), pruned=True)
 
     # pruned_model = load_model("resnet50_pruned_" + str(prune), pruned=True)
@@ -195,8 +206,8 @@ def main_worker(gpu, ngpus_per_node, args):
     # in_history = load_in_history("resnet50_pruned_" + str(prune))
     # # tuned_model = load_model("resnet50_tuned_" + str(prune), pruned=True)
     # # tuned_model = tuned_model.to(device)
-    
-    compare_models(pruned_model, tuned_model)
+
+    # compare_models(pruned_model, tuned_model)
     print("=> evaluate pruned/tuned model")
     validate(val_loader, tuned_model, criterion, args, device)
 
@@ -209,21 +220,24 @@ def main_worker(gpu, ngpus_per_node, args):
     print("=> evaluate rebuilt model 01 (no fine-tuning)")
     validate(val_loader, rebuilt_model_01, criterion, args, device)
 
-    print("=> Starting fine-tuning of rebuilt model 01 (Only train tune pruned channels)...")
-    tune(val_loader, rebuilt_model_01, criterion, out_history, in_history, device, args)
-
-    print("=> evaluate rebuilt/tuned 01")
-    validate(val_loader, rebuilt_model_01, criterion, args, device)
+    # print("=> Starting fine-tuning of rebuilt model 01 (Only train tune pruned channels)...")
+    # tune(val_loader, rebuilt_model_01, criterion, out_history, in_history, device, args)
+    #
+    # print("=> evaluate rebuilt/tuned 01")
+    # validate(val_loader, rebuilt_model_01, criterion, args, device)
 
     rebuilt_model_02 = rebuild_model(rebuilt_model_01, original_model, verification_model, device, out_history, in_history)
     rebuilt_model_02 = rebuilt_model_02 .to(device)
 
-    print("=> Starting fine-tuning of rebuilt model (Only train tune pruned channels)...")
-    tune(val_loader, rebuilt_model_02, criterion, out_history, in_history, device, args)
-
-    print("=> evaluate rebuilt/tuned 02")
+    print("=> evaluate rebuilt model 02 (no fine-tuning)")
     validate(val_loader, rebuilt_model_02, criterion, args, device)
-    save_model(rebuilt_model_02, model_str+"_rebuilt_02_" + str(prune))
+
+    # print("=> Starting fine-tuning of rebuilt model (Only train tune pruned channels)...")
+    # tune(val_loader, rebuilt_model_02, criterion, out_history, in_history, device, args)
+    #
+    # print("=> evaluate rebuilt/tuned 02")
+    # validate(val_loader, rebuilt_model_02, criterion, args, device)
+    # save_model(rebuilt_model_02, model_str+"_rebuilt_02_" + str(prune))
 
 if __name__ == '__main__':
     main()

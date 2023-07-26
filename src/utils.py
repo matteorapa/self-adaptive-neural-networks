@@ -88,16 +88,7 @@ def get_module_by_name(model, access_string):
     return reduce(getattr, names, model)
 
 
-def train(train_loader, model, epochs, device, args):
-    criterion = nn.CrossEntropyLoss().to(device)
-    optimizer = torch.optim.SGD(model.parameters(), 0.05,
-                                momentum=0.9,
-                                weight_decay=args.weight_decay)
-
-    scheduler = StepLR(optimizer, step_size=5, gamma=0.1)
-    # model.fc.requires_grad = False
-
-    for epoch in range(epochs):
+def train(train_loader, model, epoch, device, args, optimizer, criterion):
         batch_time = AverageMeter('Time', ':6.3f')
         data_time = AverageMeter('Data', ':6.3f')
         losses = AverageMeter('Loss', ':.4e')
@@ -142,7 +133,7 @@ def train(train_loader, model, epochs, device, args):
 
             if i % args.print_freq == 0:
                 progress.display(i + 1)
-        scheduler.step()
+
 
 
 
