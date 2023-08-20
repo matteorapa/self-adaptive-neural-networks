@@ -1,3 +1,4 @@
 # ignore
-/data/train
-/data/val
+/data/imagenet/train
+/data/imagenet/val
+/data/cifar10
